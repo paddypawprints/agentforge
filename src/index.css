@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.6%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.6%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.6%;
+
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+
+    --accent: 217 91.2% 59.8%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 217 91.2% 59.8%;
+
+    --radius: 0.5rem;
+
+    /* Workshop-specific semantic colors */
+    --primary: 217 91.2% 59.8%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 3.6%;
+
+    /* Agent message: blue accent for AI responses */
+    --agent-message: 217 91.2% 59.8%;
+
+    /* Tool result: green for successful tool execution */
+    --tool-result: 142 71.8% 29.2%;
+
+    /* User input: neutral gray for user messages */
+    --user-input: 0 0% 45.1%;
+  }
+
+  .dark {
+    --background: 0 0% 3.6%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 3.6%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 3.6%;
+    --popover-foreground: 0 0% 98%;
+
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+
+    --accent: 217 91.2% 59.8%;
+    --accent-foreground: 217 32.6% 17.5%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 217 91.2% 59.8%;
+
+    /* Workshop-specific semantic colors (dark mode) */
+    --primary: 217 91.2% 59.8%;
+    --primary-foreground: 217 32.6% 17.5%;
+
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+
+    /* Agent message: bright blue for dark mode */
+    --agent-message: 217 91.2% 59.8%;
+
+    /* Tool result: bright green for dark mode */
+    --tool-result: 142 76.4% 36.3%;
+
+    /* User input: light gray for dark mode */
+    --user-input: 0 0% 63.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
