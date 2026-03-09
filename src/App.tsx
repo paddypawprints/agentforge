@@ -10,9 +10,6 @@ import { Button } from './components/ui/button';
 import { RotateCcw } from 'lucide-react';
 import { togglePortkey } from './services/portkey';
 
-// Neo Philip K Dick Paranoid Future Design System
-// This app is styled with the PKD design system for a dystopian, surveillance-state aesthetic
-
 /**
  * Mock tools for demonstration
  * These tools show how the agent can invoke external functions
@@ -80,133 +77,103 @@ export default function App() {
   }, [session]);
 
   return (
-    <div className="pkd-scan-lines min-h-screen" style={{ backgroundColor: 'var(--pkd-background)' }}>
-      {/* HEADER - Neo PKD Style */}
-      <header className="pkd-border-bottom" style={{ borderColor: 'var(--pkd-border-color)' }}>
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+      {/* Header */}
+      <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="pkd-heading pkd-heading-1 pkd-text-primary">
-                ⚠️ AGENT ORCHESTRATION NEXUS
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                Agent Orchestration Demo
               </h1>
-              <p className="pkd-text-mono mt-3 text-sm" style={{ color: 'var(--pkd-foreground-muted)' }}>
+              <p className="mt-2 text-sm text-muted-foreground">
                 {session === 'session2' 
-                  ? '[ SESSION 2 ] STATE & ORCHESTRATION — Observe stateful message history and tool dispatch'
-                  : '[ SESSION 3 ] GOVERNANCE & FINOPS — Monitor costs and PII masking with Portkey gateway'}
+                  ? 'Session 2: State & Orchestration — Observe stateful message history and tool dispatch'
+                  : 'Session 3: Governance & FinOps — Monitor costs and PII masking with Portkey gateway'}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <select
                 value={session}
                 onChange={(e) => setSession(e.target.value as 'session2' | 'session3')}
-                className="pkd-input"
-                style={{
-                  backgroundColor: 'var(--pkd-background-secondary)',
-                  borderColor: 'var(--pkd-border-color)',
-                  color: 'var(--pkd-foreground)',
-                }}
+                className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
               >
-                <option value="session2">SESSION 2: STATE & ORCHESTRATION</option>
-                <option value="session3">SESSION 3: GOVERNANCE & FINOPS</option>
+                <option value="session2">Session 2: State & Orchestration</option>
+                <option value="session3">Session 3: Governance & FinOps</option>
               </select>
-              <button
+              <Button
                 onClick={clearMessages}
-                className="pkd-button pkd-button-secondary"
-                title="Clear all messages and reset the session"
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                title="Clear all messages and reset the session (demonstrates no state leakage)"
               >
-                <RotateCcw className="inline h-4 w-4 mr-2" />
-                CLEAR SESSION
-              </button>
+                <RotateCcw className="h-4 w-4" />
+                Clear Session
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* MAIN CONTENT - Grid Layout */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* INSTRUCTIONS CARD */}
-        <div className="pkd-card mb-8 pkd-paranoid-pulse">
-          <h2 className="pkd-heading pkd-heading-3 pkd-text-primary mb-4">
-            ⚡ INSTRUCTIONS FOR PARTICIPANTS
-          </h2>
-          <div className="space-y-3">
-            <div className="pkd-border-left pl-4">
-              <p className="pkd-text-mono text-sm" style={{ color: 'var(--pkd-foreground)' }}>
-                <span className="pkd-text-primary">→</span> <strong>OBSERVE THE MESSAGES ARRAY:</strong> Each message you send and each tool invocation appears in the message history. This demonstrates stateful orchestration.
-              </p>
-            </div>
-            <div className="pkd-border-left pl-4">
-              <p className="pkd-text-mono text-sm" style={{ color: 'var(--pkd-foreground)' }}>
-                <span className="pkd-text-secondary">→</span> <strong>INVOKE TOOLS:</strong> Use the Tool Dispatcher to invoke the "benefits_lookup" or "salary_calculator" tools. Watch how the agent handles tool calls and results.
-              </p>
-            </div>
-            <div className="pkd-border-left pl-4">
-              <p className="pkd-text-mono text-sm" style={{ color: 'var(--pkd-foreground)' }}>
-                <span className="pkd-text-accent">→</span> <strong>CLEAR SESSION:</strong> Click the "CLEAR SESSION" button to reset all messages. This demonstrates that there is no state leakage between sessions.
-              </p>
-            </div>
-            <div className="pkd-border-left pl-4">
-              <p className="pkd-text-mono text-sm" style={{ color: 'var(--pkd-foreground)' }}>
-                <span className="pkd-text-primary">→</span> <strong>KEY INSIGHT:</strong> Memory and tool use are application-level logic, not model capabilities. The agent orchestrator manages the message history and tool dispatch.
-              </p>
-            </div>
-          </div>
+      {/* Main Content */}
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Instructions */}
+        <div className="mb-8 rounded-lg border border-border bg-card p-6 text-card-foreground">
+          <h2 className="mb-3 text-lg font-semibold">Instructions for Participants</h2>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>
+              <strong>Observe the Messages Array:</strong> Each message you send and each tool invocation appears in the message history below. This demonstrates stateful orchestration.
+            </li>
+            <li>
+              <strong>Invoke Tools:</strong> Use the Tool Dispatcher to invoke the "benefits_lookup" or "salary_calculator" tools. Watch how the agent handles tool calls and results.
+            </li>
+            <li>
+              <strong>Clear Session:</strong> Click the "Clear Session" button to reset all messages. This demonstrates that there is no state leakage between sessions — each run starts fresh.
+            </li>
+            <li>
+              <strong>Key Insight:</strong> Memory and tool use are application-level logic, not model capabilities. The agent orchestrator manages the message history and tool dispatch.
+            </li>
+          </ul>
         </div>
 
-        {/* GRID LAYOUT - 2 COLUMNS */}
+        {/* Two-Column Layout */}
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* MESSAGE HISTORY SECTION */}
+          {/* Message History */}
           <div className="flex flex-col">
-            <div className="pkd-heading pkd-heading-3 pkd-text-primary mb-4 flex items-center gap-2">
-              <span className="inline-block w-3 h-3 bg-current animate-pulse"></span>
-              MESSAGE HISTORY
-            </div>
-            <div className="pkd-card flex-1 overflow-hidden">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">Message History</h2>
+            <div className="flex-1 rounded-lg border border-border bg-card">
               <MessageHistory />
             </div>
-            <div className="pkd-text-mono mt-3 text-xs" style={{ color: 'var(--pkd-foreground-muted)' }}>
-              <span className="pkd-badge">TOTAL MESSAGES: {messages.length}</span>
-            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Total messages: {messages.length}
+            </p>
           </div>
 
-          {/* TOOL DISPATCHER SECTION */}
+          {/* Tool Dispatcher */}
           <div className="flex flex-col">
-            <div className="pkd-heading pkd-heading-3 pkd-text-secondary mb-4 flex items-center gap-2">
-              <span className="inline-block w-3 h-3 bg-current animate-pulse"></span>
-              TOOL DISPATCHER
-            </div>
-            <div className="pkd-card flex-1 overflow-hidden">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">Tool Dispatcher</h2>
+            <div className="flex-1 rounded-lg border border-border bg-card">
               <ToolDispatcher />
             </div>
-            <div className="pkd-text-mono mt-3 text-xs" style={{ color: 'var(--pkd-foreground-muted)' }}>
-              <span className="pkd-badge pkd-badge-secondary">AVAILABLE TOOLS: {mockTools.length}</span>
-            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Available tools: {mockTools.length}
+            </p>
           </div>
         </div>
 
-        {/* COST MONITOR - Session 3 Only */}
+        {/* Cost Monitor (Session 3 only) */}
         {session === 'session3' && (
           <div className="mt-8">
-            <div className="pkd-heading pkd-heading-3 pkd-text-accent mb-4">
-              💰 COST MONITOR
-            </div>
-            <div className="pkd-card">
-              <CostMonitor />
-            </div>
+            <CostMonitor />
           </div>
         )}
 
-        {/* FOOTER - System Status */}
-        <div className="pkd-alert mt-8 pkd-text-mono text-center text-xs">
-          <p style={{ color: 'var(--pkd-foreground)' }}>
-            <span className="pkd-text-primary">[ SYSTEM STATUS ]</span> This demo shows how agents orchestrate state (messages) and tool dispatch separately from the LLM model. The message history persists during the session and can be cleared to demonstrate no state leakage.
-          </p>
-        </div>
-
-        {/* GRID REFERENCE */}
-        <div className="mt-12 pt-8 pkd-border-top" style={{ borderColor: 'var(--pkd-border-color)' }}>
-          <p className="pkd-text-mono text-xs text-center" style={{ color: 'var(--pkd-foreground-muted)' }}>
-            Neo Philip K Dick Paranoid Future Design System v1.0 | Grid: 8px | Surveillance Active
+        {/* Footer Info */}
+        <div className="mt-8 rounded-lg border border-border bg-muted/50 p-4 text-center text-xs text-muted-foreground">
+          <p>
+            This demo shows how agents orchestrate state (messages) and tool dispatch separately from the LLM model.
+            The message history persists during the session and can be cleared to demonstrate no state leakage.
           </p>
         </div>
       </main>

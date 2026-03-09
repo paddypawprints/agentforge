@@ -52,12 +52,6 @@ export default {
         "agent-message": "hsl(var(--agent-message))",
         "tool-result": "hsl(var(--tool-result))",
         "user-input": "hsl(var(--user-input))",
-        // Neo Philip K Dick Paranoid Future Design System
-        "pkd-primary": "var(--pkd-primary)",
-        "pkd-secondary": "var(--pkd-secondary)",
-        "pkd-accent": "var(--pkd-accent)",
-        "pkd-background": "var(--pkd-background)",
-        "pkd-foreground": "var(--pkd-foreground)",
       },
       borderRadius: {
         lg: "var(--radius)",
