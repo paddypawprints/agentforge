@@ -7,8 +7,10 @@
 
 /**
  * Message role type for agent communication
+ * - 'user' / 'assistant' / 'tool': standard conversation roles sent to the LLM
+ * - 'status': UI-only event (not sent to LLM) — shows orchestration steps
  */
-export type MessageRole = 'user' | 'assistant' | 'tool';
+export type MessageRole = 'user' | 'assistant' | 'tool' | 'status';
 
 /**
  * Tool call status during execution
@@ -33,6 +35,9 @@ export interface Message {
   
   /** Optional tool call associated with this message (for assistant messages) */
   toolCall?: ToolCall;
+
+  /** For tool-result messages: the ID of the tool call being responded to */
+  tool_call_id?: string;
 }
 
 /**

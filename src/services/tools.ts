@@ -1,7 +1,36 @@
+/*
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  tools.ts  —  THE TOOLS                                          ║
+ * ║                                                                  ║
+ * ║  This file defines what tools the agent can use.  Each tool     ║
+ * ║  has two parts:                                                  ║
+ * ║                                                                  ║
+ * ║    1. A JSON schema  — describes the tool and its parameters     ║
+ * ║       to the LLM.  The LLM reads this and decides when to call   ║
+ * ║       the tool and what arguments to pass.  It never sees the    ║
+ * ║       execute() code — only the description and parameter spec.  ║
+ * ║                                                                  ║
+ * ║    2. An execute() function  — the actual code that runs when    ║
+ * ║       the tool is called (by you manually in step 3, or          ║
+ * ║       automatically by the agent in step 6).                     ║
+ * ╚══════════════════════════════════════════════════════════════════╝
+ */
+
+/* ═══════════════════════════════════════════════════════════════════
+ * THE DATABASE
+ *
+ * This is the mock employee benefits database the tool queries.
+ * In a real system this would be a database call, an internal API,
+ * or a file read.  For the workshop it is an in-memory object.
+ *
+ * Note the SSN field — it is intentional.  In exercise step 9 you
+ * will see Portkey's PII detection flag it in the response logs.
+ * ═══════════════════════════════════════════════════════════════════ */
 // Mock employee benefits data from Employee_Benefits_2026.md
 const employeeBenefitsData: Record<string, Record<string, string | number>> = {
   EMP001: {
     name: "Alice Johnson",
+    ssn: "101-00-0001",
     health_insurance: "Premium PPO",
     dental: "Full Coverage",
     vision: "Full Coverage",
@@ -11,6 +40,7 @@ const employeeBenefitsData: Record<string, Record<string, string | number>> = {
   },
   EMP002: {
     name: "Bob Smith",
+    ssn: "101-00-0002",
     health_insurance: "Standard HMO",
     dental: "Basic Coverage",
     vision: "Basic Coverage",
@@ -20,6 +50,7 @@ const employeeBenefitsData: Record<string, Record<string, string | number>> = {
   },
   EMP003: {
     name: "Carol Davis",
+    ssn: "101-00-0003",
     health_insurance: "Premium PPO",
     dental: "Full Coverage",
     vision: "Full Coverage",
@@ -29,6 +60,7 @@ const employeeBenefitsData: Record<string, Record<string, string | number>> = {
   },
   EMP004: {
     name: "David Wilson",
+    ssn: "101-00-0004",
     health_insurance: "Standard HMO",
     dental: "Full Coverage",
     vision: "Basic Coverage",
@@ -52,6 +84,23 @@ export interface Tool {
   execute: (input: Record<string, unknown>) => Promise<string>;
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+ * EXERCISE STEP 3 — THE TOOL DEFINITION
+ *
+ * `benefitsLookupTool` is the tool object passed to the LLM on every
+ * orchestrator call.  It has two parts:
+ *
+ *   inputSchema  —  JSON Schema describing the tool to the LLM.
+ *                   The LLM reads this to know the tool exists, what
+ *                   it does, and what arguments to include.
+ *                   The LLM never sees the execute() code.
+ *
+ *   execute()    —  The function that actually runs when the tool is
+ *                   called.  Takes the arguments the LLM chose as input,
+ *                   and returns a JSON string.  You can call this directly
+ *                   in the Tool Dispatcher sandbox (step 3), and the
+ *                   agent calls it automatically in step 6.
+ * ═══════════════════════════════════════════════════════════════════ */
 // Benefits Lookup Tool
 export const benefitsLookupTool: Tool = {
   name: "benefits_lookup",
@@ -103,81 +152,16 @@ export const benefitsLookupTool: Tool = {
   },
 };
 
-// Salary Calculator Tool
-export const salaryCalcTool: Tool = {
-  name: "salary_calc",
-  description:
-    "Calculate total compensation based on base salary and bonus percentage. Returns base salary, bonus amount, and total compensation.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      base_salary: {
-        type: "number",
-        description: "The base annual salary in USD",
-      },
-      bonus_percentage: {
-        type: "number",
-        description: "The bonus percentage (e.g., 15 for 15%)",
-      },
-    },
-    required: ["base_salary", "bonus_percentage"],
-  },
-  execute: async (input: Record<string, unknown>): Promise<string> => {
-    const startTime = performance.now();
-    const baseSalary = input.base_salary as number;
-    const bonusPercentage = input.bonus_percentage as number;
-
-    console.log(
-      `[salary_calc] Invoked with base_salary: ${baseSalary}, bonus_percentage: ${bonusPercentage}%`
-    );
-
-    // Validate inputs
-    if (typeof baseSalary !== "number" || baseSalary < 0) {
-      const result = JSON.stringify({
-        success: false,
-        error: "base_salary must be a non-negative number",
-      });
-      const duration = performance.now() - startTime;
-      console.log(
-        `[salary_calc] Completed in ${duration.toFixed(2)}ms with validation error`
-      );
-      return result;
-    }
-
-    if (typeof bonusPercentage !== "number" || bonusPercentage < 0) {
-      const result = JSON.stringify({
-        success: false,
-        error: "bonus_percentage must be a non-negative number",
-      });
-      const duration = performance.now() - startTime;
-      console.log(
-        `[salary_calc] Completed in ${duration.toFixed(2)}ms with validation error`
-      );
-      return result;
-    }
-
-    const bonusAmount = baseSalary * (bonusPercentage / 100);
-    const totalCompensation = baseSalary + bonusAmount;
-
-    const result = JSON.stringify({
-      success: true,
-      base_salary: baseSalary,
-      bonus_percentage: bonusPercentage,
-      bonus_amount: bonusAmount,
-      total_compensation: totalCompensation,
-    });
-
-    const duration = performance.now() - startTime;
-    console.log(
-      `[salary_calc] Completed in ${duration.toFixed(2)}ms with success`
-    );
-
-    return result;
-  },
-};
-
+/* ═══════════════════════════════════════════════════════════════════
+ * TOOL REGISTRY
+ *
+ * allTools is the array passed to orchestrate() and forwarded to the
+ * LLM as tool definitions on every call.  Add new tools here to make
+ * them available to the agent.  The LLM will see all of them and
+ * decide which (if any) to call based on the user's question.
+ * ═══════════════════════════════════════════════════════════════════ */
 // Export all tools as an array for easy iteration
-export const allTools: Tool[] = [benefitsLookupTool, salaryCalcTool];
+export const allTools: Tool[] = [benefitsLookupTool];
 
 // Helper function to get a tool by name
 export function getToolByName(name: string): Tool | undefined {
@@ -190,7 +174,4 @@ export async function benefitsLookup(employeeId: string): Promise<Record<string,
   return JSON.parse(result);
 }
 
-export async function salaryCalc(baseSalary: number, bonusPercentage: number): Promise<Record<string, unknown>> {
-  const result = await salaryCalcTool.execute({ base_salary: baseSalary, bonus_percentage: bonusPercentage });
-  return JSON.parse(result);
-}
+

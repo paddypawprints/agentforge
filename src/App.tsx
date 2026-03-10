@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 import { useAgentStore } from './store/agentStore';
 import { MessageHistory } from './components/MessageHistory';
 import { ToolDispatcher } from './components/ToolDispatcher';
-import { CostMonitor } from './components/CostMonitor';
 import { Tool } from './types/agent';
 import { Button } from './components/ui/button';
 import { RotateCcw } from 'lucide-react';
-import { togglePortkey } from './services/portkey';
+import { ApiKeyInput } from './components/ApiKeyInput';
+import { SystemPromptEditor } from './components/SystemPromptEditor';
 
 /**
  * Mock tools for demonstration
@@ -71,9 +71,6 @@ export default function App() {
     // Tools are available for the ToolDispatcher component to use
     // This demonstrates that tools are initialized at the application level
     console.log('App mounted. Tools initialized:', mockTools.map((t) => t.name));
-    
-    // Enable/disable Portkey based on session
-    togglePortkey(session === 'session3');
   }, [session]);
 
   return (
@@ -101,6 +98,7 @@ export default function App() {
                 <option value="session2">Session 2: State & Orchestration</option>
                 <option value="session3">Session 3: Governance & FinOps</option>
               </select>
+              <ApiKeyInput />
               <Button
                 onClick={clearMessages}
                 variant="outline"
@@ -117,57 +115,59 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Instructions */}
-        <div className="mb-8 rounded-lg border border-border bg-card p-6 text-card-foreground">
-          <h2 className="mb-3 text-lg font-semibold">Instructions for Participants</h2>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>
-              <strong>Observe the Messages Array:</strong> Each message you send and each tool invocation appears in the message history below. This demonstrates stateful orchestration.
-            </li>
-            <li>
-              <strong>Invoke Tools:</strong> Use the Tool Dispatcher to invoke the "benefits_lookup" or "salary_calculator" tools. Watch how the agent handles tool calls and results.
-            </li>
-            <li>
-              <strong>Clear Session:</strong> Click the "Clear Session" button to reset all messages. This demonstrates that there is no state leakage between sessions — each run starts fresh.
-            </li>
-            <li>
-              <strong>Key Insight:</strong> Memory and tool use are application-level logic, not model capabilities. The agent orchestrator manages the message history and tool dispatch.
-            </li>
-          </ul>
-        </div>
-
-        {/* Two-Column Layout */}
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* Message History */}
-          <div className="flex flex-col">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">Message History</h2>
-            <div className="flex-1 rounded-lg border border-border bg-card">
-              <MessageHistory />
+          {/* LEFT COLUMN: Instructions + Tool Dispatcher */}
+          <div className="flex flex-col gap-8">
+            {/* Instructions */}
+            <div className="rounded-lg border border-border bg-card p-6 text-card-foreground">
+              <h2 className="mb-3 text-lg font-semibold">Instructions for Participants</h2>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <strong>Observe the Messages Array:</strong> Each message you send and each tool invocation appears in the message history. This demonstrates stateful orchestration.
+                </li>
+                <li>
+                  <strong>Invoke Tools:</strong> Use the Tool Dispatcher to invoke the "benefits_lookup" or "salary_calculator" tools. Watch how the agent handles tool calls and results.
+                </li>
+                <li>
+                  <strong>Clear Session:</strong> Click the "Clear Session" button to reset all messages. This demonstrates that there is no state leakage between sessions — each run starts fresh.
+                </li>
+                <li>
+                  <strong>Key Insight:</strong> Memory and tool use are application-level logic, not model capabilities. The agent orchestrator manages the message history and tool dispatch.
+                </li>
+              </ul>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Total messages: {messages.length}
-            </p>
+
+            {/* Tool Dispatcher */}
+            <div className="flex flex-col">
+              <h2 className="mb-4 text-lg font-semibold text-foreground">Tool Dispatcher</h2>
+              <div className="flex-1 rounded-lg border border-border bg-card">
+                <ToolDispatcher />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Available tools: {mockTools.length}
+              </p>
+            </div>
+
           </div>
 
-          {/* Tool Dispatcher */}
-          <div className="flex flex-col">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">Tool Dispatcher</h2>
-            <div className="flex-1 rounded-lg border border-border bg-card">
-              <ToolDispatcher />
+          {/* RIGHT COLUMN: System Prompt + Message History */}
+          <div className="flex flex-col gap-8">
+            {/* System Prompt Editor */}
+            <SystemPromptEditor />
+
+            {/* Message History */}
+            <div className="flex flex-col">
+              <h2 className="mb-4 text-lg font-semibold text-foreground">Message History</h2>
+              <div className="flex-1 rounded-lg border border-border bg-card">
+                <MessageHistory />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Total messages: {messages.length}
+              </p>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Available tools: {mockTools.length}
-            </p>
           </div>
         </div>
-
-        {/* Cost Monitor (Session 3 only) */}
-        {session === 'session3' && (
-          <div className="mt-8">
-            <CostMonitor />
-          </div>
-        )}
 
         {/* Footer Info */}
         <div className="mt-8 rounded-lg border border-border bg-muted/50 p-4 text-center text-xs text-muted-foreground">

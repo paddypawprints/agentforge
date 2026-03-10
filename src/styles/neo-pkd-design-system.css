@@ -15,11 +15,11 @@
   --pkd-primary-light: #33ff66;
   --pkd-primary-glow: rgba(0, 255, 65, 0.3);
   
-  /* Secondary: Deep Paranoid Purple (reality distortion) */
-  --pkd-secondary: #7c3aed;
-  --pkd-secondary-dark: #6d28d9;
-  --pkd-secondary-light: #a78bfa;
-  --pkd-secondary-glow: rgba(124, 58, 237, 0.3);
+  /* Secondary: Bright Sky Blue (signal channel) */
+  --pkd-secondary: #00e5ff;
+  --pkd-secondary-dark: #00b8d4;
+  --pkd-secondary-light: #40eeff;
+  --pkd-secondary-glow: rgba(0, 229, 255, 0.4);
   
   /* Accent: Warning Orange (danger, surveillance alert) */
   --pkd-accent: #ff6b35;
@@ -39,7 +39,7 @@
   
   /* Foreground: Bright White (harsh, clinical) */
   --pkd-foreground: #f5f5f5;
-  --pkd-foreground-muted: #a0a0a0;
+  --pkd-foreground-muted: #c8d4c0;
   
   /* Grid & Structure */
   --pkd-grid-size: 8px;
@@ -293,6 +293,14 @@ body {
   transform: translate(0, 0);
 }
 
+/* Explicit primary alias — filled green button */
+.pkd-button-primary {
+  background-color: var(--pkd-primary);
+  color: var(--pkd-background);
+  border: var(--pkd-border-width) solid var(--pkd-primary);
+}
+
+/* Outline button */
 .pkd-button-secondary {
   background-color: transparent;
   color: var(--pkd-primary);
@@ -321,6 +329,7 @@ body {
   padding: calc(var(--pkd-grid-size) * 1.5) calc(var(--pkd-grid-size) * 2);
   font-family: var(--pkd-font-mono);
   font-size: 0.875rem;
+  line-height: 1.5;
   transition: all var(--pkd-transition-normal);
 }
 
@@ -548,12 +557,12 @@ body {
 
 @media (prefers-color-scheme: light) {
   :root {
-    --pkd-background: #f5f5f5;
-    --pkd-background-secondary: #e8e8e8;
-    --pkd-background-tertiary: #d0d0d0;
-    --pkd-foreground: #0a0a0a;
-    --pkd-foreground-muted: #606060;
-    --pkd-grid-color: rgba(0, 255, 65, 0.1);
-    --pkd-grid-color-active: rgba(0, 255, 65, 0.25);
+    --pkd-background: #334155;
+    --pkd-background-secondary: #3e4f63;
+    --pkd-background-tertiary: #475569;
+    --pkd-foreground: #ffffff;
+    --pkd-foreground-muted: #d8e4d0;
+    --pkd-grid-color: rgba(0, 255, 65, 0.12);
+    --pkd-grid-color-active: rgba(0, 255, 65, 0.28);
   }
 }
