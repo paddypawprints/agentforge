@@ -7,7 +7,7 @@ import { ToolDispatcher } from './components/ToolDispatcher';
 import { MessageComposer } from './components/MessageComposer';
 import { ArchitectureDiagram } from './components/ArchitectureDiagram';
 import { RotateCcw } from 'lucide-react';
-import { setPortkeyApiKey, isPortkeyActive } from './services/orchestrator';
+import { setPortkeyApiKey, isPortkeyActive, setTemperature } from './services/orchestrator';
 import { ApiKeyInput } from './components/ApiKeyInput';
 import { SystemPromptEditor } from './components/SystemPromptEditor';
 import { benefitsLookupTool } from './services/tools';
@@ -18,6 +18,7 @@ export default function App() {
   const { messages, clearMessages } = useAgentStore();
   const [portkeyEnabled, setPortkeyEnabled] = useState(false);
   const [portkeyKey, setPortkeyKey] = useState('');
+  const [temperature, setTemperatureState] = useState(1.0);
 
   useEffect(() => {
     console.log('App mounted. Tools:', agentTools.map((t) => t.name));
@@ -68,6 +69,23 @@ export default function App() {
                   style={{ width: '160px', backgroundColor: 'var(--pkd-background-secondary)', borderColor: portkeyKey ? 'var(--pkd-primary)' : 'var(--pkd-border-color)', color: 'var(--pkd-foreground)' }}
                 />
               )}
+              {/* Temperature */}
+              <label className="flex items-center gap-1.5 pkd-text-mono text-xs" style={{ color: 'var(--pkd-foreground-muted)' }}>
+                TEMP
+                <input
+                  type="number"
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  value={temperature}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (!isNaN(v)) { setTemperatureState(v); setTemperature(v); }
+                  }}
+                  className="pkd-input text-xs"
+                  style={{ width: '56px', backgroundColor: 'var(--pkd-background-secondary)', borderColor: 'var(--pkd-border-color)', color: 'var(--pkd-foreground)', textAlign: 'center' }}
+                />
+              </label>
               <ApiKeyInput variant="pkd" />
               <button
                 onClick={clearMessages}

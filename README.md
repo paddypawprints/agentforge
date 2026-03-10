@@ -1,6 +1,100 @@
-# AI Agents Workshop: State & Orchestration Demo
+# AgentForge — AI Agents Workshop
 
-A hands-on StackBlitz React template demonstrating stateful agent orchestration with message history and tool dispatch. This template is part of the Internet Society San Francisco AI Day workshop, Session 2: State & Orchestration.
+A hands-on workshop app for learning AI agent orchestration. Built with React, Vite, and the Groq API.
+
+Live: **https://paddypawprints.github.io/agentforge/**
+
+---
+
+## Using the App
+
+No installation required. Open the link above, enter your Groq API key in the header, and follow the 9-step exercise in the left panel.
+
+Get a free Groq API key at [console.groq.com](https://console.groq.com).
+
+---
+
+## Workshop Exercise
+
+The 9 steps walk you through how an AI agent actually works, building up from first principles:
+
+| Step | Topic |
+|------|-------|
+| 1 | System prompt — shape the model's behaviour with instructions |
+| 2 | Grounding — embed a document directly in the prompt |
+| 3 | Tools — call the `benefits_lookup` tool manually in the sandbox |
+| 4 | LLM without tools — ask a data question, observe hallucination |
+| 5 | Manual grounding — paste tool output into the chat yourself |
+| 6 | Agent loop — let the orchestrator do steps 3–5 automatically |
+| 7 | Portkey setup — create a virtual key pointing at Groq |
+| 8 | Enable Portkey — route all traffic through the gateway |
+| 9 | Observe — inspect logs, token counts, and PII detection |
+
+---
+
+## The Two Files That Matter
+
+All the agent logic lives in two files:
+
+- **[`src/services/tools.ts`](src/services/tools.ts)** — defines the `benefits_lookup` tool: its JSON schema (what the LLM sees) and `execute()` function (the actual data lookup). To add a new tool, add it here.
+
+- **[`src/services/orchestrator.ts`](src/services/orchestrator.ts)** — the agent loop: builds the messages array, calls the LLM, checks `finish_reason`, runs tools, injects results, loops until done. Heavily commented and keyed to the exercise steps.
+
+Everything else is UI that visualises what those two files are doing.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│  MessageComposer  ←→  MessageHistory    │  React UI (Zustand store)
+└──────────────┬──────────────────────────┘
+               │ orchestrate(userQuery, tools)
+┌──────────────▼──────────────────────────┐
+│           orchestrator.ts               │
+│  1. Build messages array                │
+│  2. Call LLM (Groq or Portkey)          │
+│  3. finish_reason === "tool_calls"?      │
+│     → execute tool → inject result      │
+│     → call LLM again                    │
+│  4. finish_reason === "stop" → done     │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│             tools.ts                    │
+│  benefits_lookup.execute(employee_id)   │
+│  → returns JSON with benefits + SSN     │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## Running Locally
+
+```bash
+git clone https://github.com/paddypawprints/agentforge.git
+cd agentforge
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. Enter your Groq key in the header — no `.env` file needed.
+
+```bash
+npm run build    # production build → dist/
+npm run preview  # preview the production build locally
+```
+
+---
+
+## Forking & Deploying Your Own Copy
+
+1. Fork the repo on GitHub
+2. Go to your fork's **Settings → Pages → Source → GitHub Actions**
+3. Push any change to `main` — the included workflow builds and deploys automatically
+4. Your app will be live at `https://<your-username>.github.io/agentforge/`
+
 
 ## 📋 Prerequisites
 

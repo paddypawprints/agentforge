@@ -20,6 +20,7 @@ import BENEFITS_DOC from "../data/Employee Benefits 2026.md?raw";
 let groq: any = null;
 let runtimeApiKey: string | null = null;
 let runtimeModel: string = "llama-3.3-70b-versatile";
+let runtimeTemperature: number = 1.0;
 let runtimePortkeyKey: string | null = null;
 let runtimePortkeyVirtualKey: string = "aidaysf"; // virtual key slug configured in Portkey dashboard
 
@@ -96,6 +97,11 @@ export function isPortkeyActive(): boolean {
 /** Set the Groq model to use at runtime. */
 export function setGroqModel(model: string) {
   runtimeModel = model;
+}
+
+/** Set the sampling temperature (0.0 – 2.0). */
+export function setTemperature(value: number) {
+  runtimeTemperature = Math.max(0, Math.min(2, value));
 }
 
 /** Set the system prompt at runtime. */
@@ -179,6 +185,7 @@ async function callGroqAPI(
       model: runtimeModel,
       messages: groqHistory,
       tools: groqTools,
+      temperature: runtimeTemperature,
     });
     const res = await fetch("https://api.portkey.ai/v1/chat/completions", {
       method: "POST",
@@ -206,6 +213,7 @@ async function callGroqAPI(
     model: runtimeModel,
     messages: groqHistory,
     tools: groqTools,
+    temperature: runtimeTemperature,
   });
   return response.choices[0];
 }
