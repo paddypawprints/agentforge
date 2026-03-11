@@ -265,6 +265,10 @@ The sandbox at **https://paddypawprints.github.io/agentforge/** (and the local v
 
 ### Workshop Exercises
 
+Open the sandbox before starting: **https://paddypawprints.github.io/agentforge/**
+
+You will need your Groq API key — see **Getting a Groq API Key** above if you haven't done that yet.
+
 ---
 
 #### Step 1 — System Prompt: Shape the Model's Behaviour
