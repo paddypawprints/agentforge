@@ -11,6 +11,7 @@ import { setPortkeyApiKey, isPortkeyActive, setTemperature } from './services/or
 import { ApiKeyInput } from './components/ApiKeyInput';
 import { SystemPromptEditor } from './components/SystemPromptEditor';
 import { benefitsLookupTool } from './services/tools';
+import predevBadge from '../public/predev.jpg';
 
 const agentTools = [benefitsLookupTool];
 
@@ -239,11 +240,18 @@ export default function App() {
           </p>
         </div>
 
-        {/* GRID REFERENCE */}
-        <div className="mt-12 pt-8 pkd-border-top" style={{ borderColor: 'var(--pkd-border-color)' }}>
-          <p className="pkd-text-mono text-xs text-center" style={{ color: 'var(--pkd-foreground-muted)' }}>
+        {/* GRID REFERENCE + PRE.DEV BADGE */}
+        <div className="mt-12 pt-8 pkd-border-top flex items-center justify-between" style={{ borderColor: 'var(--pkd-border-color)' }}>
+          <p className="pkd-text-mono text-xs" style={{ color: 'var(--pkd-foreground-muted)' }}>
             Neo Philip K Dick Paranoid Future Design System v1.0 | Grid: 8px | Surveillance Active
           </p>
+          <a href="https://pre.dev" target="_blank" rel="noopener noreferrer">
+            <img
+              src={predevBadge}
+              alt="Designed by pre.dev"
+              style={{ height: '32px', width: 'auto', display: 'block', borderRadius: '4px' }}
+            />
+          </a>
         </div>
       </main>
     </div>
