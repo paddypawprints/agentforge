@@ -469,7 +469,7 @@ You cannot send messages in the sandbox without a Groq API key. Here is how to g
 3. Once logged in, click **API Keys** in the left sidebar.
 4. Click **Create API Key**.
 5. Give the key a name — anything works, e.g. `agentforge-workshop`.
-6. Click **Submit**. The key is shown once — copy it now.
+6. Click **Submit**. The key is shown once — copy it now and save it somewhere safe (e.g. a notes app). You will need it again in Step 7 if you want to use the Portkey AI gateway for observability.
 7. Return to the sandbox and paste the key into the **API KEY** field in the top-right of the header.
 8. Press Enter or click away. The field will show a green border when a key is present.
 
