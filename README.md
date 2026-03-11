@@ -8,6 +8,42 @@ Built with [pre.dev](https://pre.dev)
 
 ---
 
+## Before You Start — Get Your API Keys
+
+### Groq API Key (required)
+
+You cannot send messages in the sandbox without a Groq API key. Here is how to get one in about two minutes:
+
+1. Open [console.groq.com](https://console.groq.com) in a new tab.
+2. Click **Sign Up** and create a free account (Google or GitHub login available).
+3. Once logged in, click **API Keys** in the left sidebar.
+4. Click **Create API Key**.
+5. Give the key a name — anything works, e.g. `agentforge-workshop`.
+6. Click **Submit**. The key is shown once — copy it now and save it somewhere safe (e.g. a notes app). You will need it again for the Portkey bonus exercises.
+7. Return to the sandbox and paste the key into the **API KEY** field in the top-right of the header.
+8. Press Enter or click away. The field will show a green border when a key is present.
+
+The key is stored only in your browser's memory for the current session. It is sent directly to Groq and nowhere else. If you close and reopen the tab you will need to paste it again.
+
+### Portkey API Key (bonus Steps 7–9 only)
+
+[Portkey](https://portkey.ai) is an **AI gateway** — a proxy layer that sits between your application and any LLM provider. It gives you centralised logging, cost tracking, rate limiting, PII detection, and the ability to switch models or providers without changing application code. Think of it as an API gateway (like Kong or AWS API Gateway) purpose-built for LLM traffic.
+
+For this workshop, Portkey lets you inspect every call the agent makes — the full prompt, the tool call, the tool result, token counts, and latency — from a single dashboard.
+
+To get a free Portkey key:
+
+1. Open [app.portkey.ai](https://app.portkey.ai) and sign up for a free account.
+2. Once logged in, copy your **Portkey API key** from the dashboard home or the **API Keys** section.
+3. Navigate to **Virtual Keys → Add Key**.
+4. Select **Groq** as the provider.
+5. Enter `aidaysf` as the slug (this is the virtual key identifier the sandbox uses).
+6. Paste your Groq API key into the provider key field and save.
+
+You now have a virtual key — a named alias for your Groq key stored securely in Portkey. The sandbox never needs your real Groq key when routing through Portkey; it uses the virtual key slug instead.
+
+---
+
 ## 1. Scope — Who This Is For
 
 This workshop is aimed at **technically literate people who are already comfortable using LLM chatbots** (ChatGPT, Claude, Gemini, etc.) but have not yet written code that calls a model API.
@@ -267,7 +303,7 @@ The sandbox at **https://paddypawprints.github.io/agentforge/** (and the local v
 
 Open the sandbox before starting: **https://paddypawprints.github.io/agentforge/**
 
-You will need your Groq API key — see **Getting a Groq API Key** above if you haven't done that yet.
+You will need your Groq API key in the **API KEY** field in the header — see **Before You Start** at the top of this document if you haven't done that yet.
 
 ---
 
@@ -453,50 +489,6 @@ npm run preview  # preview the production build locally
 2. Go to your fork's **Settings → Pages → Source → GitHub Actions**
 3. Push any change to `main` — the included workflow builds and deploys automatically
 4. Your live app will be at `https://<your-username>.github.io/agentforge/`
-
----
-
-## Prerequisites
-
-- A free Groq API key — **required to use the sandbox** (no credit card, takes 2 minutes — see below)
-- A modern browser (Chrome, Firefox, Safari, or Edge)
-- Node.js v18+ and npm v9+ only needed if running locally
-
----
-
-## Getting a Groq API Key
-
-You cannot send messages in the sandbox without a Groq API key. Here is how to get one in about two minutes:
-
-1. Open [console.groq.com](https://console.groq.com) in a new tab.
-2. Click **Sign Up** and create a free account (Google or GitHub login available).
-3. Once logged in, click **API Keys** in the left sidebar.
-4. Click **Create API Key**.
-5. Give the key a name — anything works, e.g. `agentforge-workshop`.
-6. Click **Submit**. The key is shown once — copy it now and save it somewhere safe (e.g. a notes app). You will need it again in Step 7 if you want to use the Portkey AI gateway for observability.
-7. Return to the sandbox and paste the key into the **API KEY** field in the top-right of the header.
-8. Press Enter or click away. The field will show a green border when a key is present.
-
-The key is stored only in your browser's memory for the current session. It is sent directly to Groq and nowhere else. If you close and reopen the tab you will need to paste it again.
-
----
-
-## Getting a Portkey API Key (Bonus Steps 7–9 only)
-
-[Portkey](https://portkey.ai) is an **AI gateway** — a proxy layer that sits between your application and any LLM provider. It gives you centralised logging, cost tracking, rate limiting, PII detection, and the ability to switch models or providers without changing application code. Think of it as an API gateway (like Kong or AWS API Gateway) purpose-built for LLM traffic.
-
-For this workshop, Portkey lets you inspect every call the agent makes — the full prompt, the tool call, the tool result, token counts, and latency — from a single dashboard.
-
-To get a free Portkey key:
-
-1. Open [app.portkey.ai](https://app.portkey.ai) and sign up for a free account.
-2. Once logged in, copy your **Portkey API key** from the dashboard home or the **API Keys** section.
-3. Navigate to **Virtual Keys → Add Key**.
-4. Select **Groq** as the provider.
-5. Enter `aidaysf` as the slug (this is the virtual key identifier the sandbox uses).
-6. Paste your Groq API key into the provider key field and save.
-
-You now have a virtual key — a named alias for your Groq key stored securely in Portkey. The sandbox never needs your real Groq key when routing through Portkey; it uses the virtual key slug instead.
 
 ---
 
