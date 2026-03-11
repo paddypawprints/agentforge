@@ -475,4 +475,6 @@ npm run preview  # preview the production build locally
 
 ## License
 
-Workshop material provided for educational purposes.
+This work is licensed under the [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+
+You are free to share and adapt this material for any purpose, including commercially, as long as you give appropriate credit. See the [LICENSE](LICENSE) file for the full terms.
