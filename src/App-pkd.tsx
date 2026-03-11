@@ -73,7 +73,7 @@ export default function App() {
               <label className="flex items-center gap-1.5 pkd-text-mono text-xs" style={{ color: 'var(--pkd-foreground-muted)' }}>
                 TEMP
                 <input
-                  type="number"
+                  type="range"
                   min={0}
                   max={2}
                   step={0.1}
@@ -82,9 +82,11 @@ export default function App() {
                     const v = parseFloat(e.target.value);
                     if (!isNaN(v)) { setTemperatureState(v); setTemperature(v); }
                   }}
-                  className="pkd-input text-xs"
-                  style={{ width: '56px', backgroundColor: 'var(--pkd-background-secondary)', borderColor: 'var(--pkd-border-color)', color: 'var(--pkd-foreground)', textAlign: 'center' }}
+                  style={{ width: '80px', accentColor: 'var(--pkd-primary)', cursor: 'pointer' }}
                 />
+                <span style={{ color: 'var(--pkd-foreground)', minWidth: '2.5ch', textAlign: 'right' }}>
+                  {temperature.toFixed(1)}
+                </span>
               </label>
               <ApiKeyInput variant="pkd" />
               <button

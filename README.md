@@ -1,50 +1,400 @@
-# AgentForge — AI Agents Workshop
+# AgentForge — Building Your First AI Agent
 
-A hands-on workshop app for learning AI agent orchestration. Built with React, Vite, and the Groq API.
+A hands-on workshop for technical people who use LLM chatbots every day but want to understand — and write — the code that makes them work.
 
-Live: **https://paddypawprints.github.io/agentforge/**
-
----
-
-## Using the App
-
-No installation required. Open the link above, enter your Groq API key in the header, and follow the 9-step exercise in the left panel.
-
-Get a free Groq API key at [console.groq.com](https://console.groq.com).
+Hands-on sandbox: **https://paddypawprints.github.io/agentforge/**
+Source code: **https://github.com/paddypawprints/agentforge**
+Built with [pre.dev](https://pre.dev)
 
 ---
 
-## Workshop Exercise
+## 1. Scope — Who This Is For
 
-The 9 steps walk you through how an AI agent actually works, building up from first principles:
+This workshop is aimed at **technically literate people who are already comfortable using LLM chatbots** (ChatGPT, Claude, Gemini, etc.) but have not yet written code that calls a model API.
 
-| Step | Topic |
-|------|-------|
-| 1 | System prompt — shape the model's behaviour with instructions |
-| 2 | Grounding — embed a document directly in the prompt |
-| 3 | Tools — call the `benefits_lookup` tool manually in the sandbox |
-| 4 | LLM without tools — ask a data question, observe hallucination |
-| 5 | Manual grounding — paste tool output into the chat yourself |
-| 6 | Agent loop — let the orchestrator do steps 3–5 automatically |
-| 7 | Portkey setup — create a virtual key pointing at Groq |
-| 8 | Enable Portkey — route all traffic through the gateway |
-| 9 | Observe — inspect logs, token counts, and PII detection |
+By the end of this session you will:
+
+- Understand the difference between a raw language model and a chatbot product
+- Know why memory is not a model feature — it is application code
+- Have read and run a real agent loop (< 100 lines of TypeScript)
+- Be able to extend the agent with your own tool
+
+No prior AI/ML background is required. Basic familiarity with JavaScript or TypeScript is helpful but not essential — all the key code is annotated line-by-line.
 
 ---
 
-## The Two Files That Matter
+## 2. All the Code Is Here — Clone and Experiment
 
-All the agent logic lives in two files:
+Everything shown in this presentation is in this repository. There are no hidden services, no proprietary SDKs, no magic. Clone it, run it locally, and break things.
 
-- **[`src/services/tools.ts`](src/services/tools.ts)** — defines the `benefits_lookup` tool: its JSON schema (what the LLM sees) and `execute()` function (the actual data lookup). To add a new tool, add it here.
+```bash
+git clone https://github.com/paddypawprints/agentforge.git
+cd agentforge
+npm install
+npm run dev
+```
 
-- **[`src/services/orchestrator.ts`](src/services/orchestrator.ts)** — the agent loop: builds the messages array, calls the LLM, checks `finish_reason`, runs tools, injects results, loops until done. Heavily commented and keyed to the exercise steps.
+Open `http://localhost:5173`. Enter your free Groq API key in the header and you are live.
 
-Everything else is UI that visualises what those two files are doing.
+Get a free Groq API key (no credit card required) at [console.groq.com](https://console.groq.com).
+
+The two files that contain every concept in this workshop:
+
+| File | What it does |
+|------|-------------|
+| [`src/services/orchestrator.ts`](src/services/orchestrator.ts) | The agent loop — memory, calling the model, running tools |
+| [`src/services/tools.ts`](src/services/tools.ts) | Tool definitions — what the model can call and how |
+
+Everything else is UI that visualises those two files.
 
 ---
 
-## Architecture
+## 3. Model vs Chatbot — Memory and the Loop
+
+When you open ChatGPT and have a multi-turn conversation, you might naturally assume the model "remembers" what you said. It does not.
+
+**A language model is a stateless function.** Every time you call it, you hand it a block of text and it hands back a continuation. It has no memory of previous calls. Each request is completely independent.
+
+```
+Call 1:  [  "What's the capital of France?"  ]  →  "Paris."
+Call 2:  [  "What's its population?"         ]  →  ??? (who is "its"?)
+```
+
+Call 2 fails — or hallucinates — because the model received no context.
+
+**A chatbot product solves this by maintaining a messages array in application code** and passing the full conversation history on every call:
+
+```
+Call 2:  [
+  { role: "user",      content: "What's the capital of France?" },
+  { role: "assistant", content: "Paris." },
+  { role: "user",      content: "What's its population?"        }
+]
+→  "Paris has a population of approximately 2.1 million in the city proper."
+```
+
+The model now has context. **Memory is not a model feature — it is a loop maintained by your code.**
+
+This is the single most important concept in this workshop. Everything else builds on it.
+
+---
+
+## 4. Raw Models — What Are We Actually Working With?
+
+Underneath every chatbot product is a foundation model: a large neural network trained to predict the next token in a sequence of text. Common open-weight and hosted models include:
+
+| Model family | Provider | Notes |
+|---|---|---|
+| Llama 3.x | Meta (hosted by Groq, Together, etc.) | Open weights, fast |
+| Mixtral | Mistral AI | Strong reasoning, MoE architecture |
+| Gemma 3 | Google | Compact, efficient |
+| Qwen 2.5 | Alibaba | Strong multilingual |
+
+All of these expose the same basic API: send a `messages` array, receive a response. The differences are in speed, cost, context window, and quality on different tasks.
+
+For this workshop we use **Groq** as our inference provider because:
+
+- Free tier with generous rate limits
+- Extremely fast inference (often < 1 second to first token)
+- Supports multiple open models through one API
+- Compatible with the OpenAI SDK — the same code works with OpenAI, Anthropic, and most other providers with a one-line change
+
+---
+
+## 5. Groq Provides a Model Playground
+
+Before writing any code, it is worth spending a few minutes with Groq's built-in playground to get a feel for what a raw model looks like.
+
+Go to [console.groq.com/playground](https://console.groq.com/playground).
+
+You will see:
+
+- A **model selector** — choose from the available hosted models
+- A **system prompt** field — instructions you give the model before the conversation starts
+- A **chat interface** — send messages and see responses
+- **Token counts and latency** — visible on every response
+
+This is the same interface you will be controlling programmatically in minutes.
+
+---
+
+## 6. Connecting to Groq — API Keys and the SDK
+
+Groq's API is compatible with the OpenAI SDK. You can switch between providers by changing the `baseURL` and `apiKey`:
+
+```typescript
+import Groq from "groq-sdk";
+
+const groq = new Groq({ apiKey: "your-key-here", dangerouslyAllowBrowser: true });
+
+const response = await groq.chat.completions.create({
+  model: "llama-3.3-70b-versatile",
+  messages: [
+    { role: "system",  content: "You are a helpful assistant." },
+    { role: "user",    content: "What is TypeScript?" },
+  ],
+});
+
+console.log(response.choices[0].message.content);
+```
+
+That is the complete minimum. One function call, one response. No framework, no agent, just a model.
+
+### Temperature
+
+Every call accepts a `temperature` parameter (0.0 – 2.0) that controls how random the output is:
+
+| Range | Effect |
+|-------|--------|
+| **0.0** | Deterministic — always picks the most likely token. Best for tool-use and structured output. |
+| **0.7 – 1.0** | Balanced — the typical default. Good for general chat. |
+| **1.0 – 1.5** | More creative and varied output. |
+| **1.5 – 2.0** | Very random — often incoherent. Rarely useful. |
+
+For an agent making tool calls, keep temperature low (0.0–0.5) so it reliably produces well-formed requests. For open-ended conversation, 0.7–1.0 is the sweet spot. You can adjust this in real time using the TEMP slider in the sandbox header.
+
+---
+
+## 7. Try It in the Playground — Notice the Missing Memory
+
+Open the Groq playground at [console.groq.com/playground](https://console.groq.com/playground).
+
+1. Select any model (e.g. `llama-3.3-70b-versatile`)
+2. Set the system prompt to: `You are a helpful chatbot.`
+3. Send a message: `My name is Alex.`
+4. The model responds and acknowledges your name.
+5. Now click **"New conversation"** (or the equivalent reset button) and ask: `What is my name?`
+
+The model says it does not know. **Each conversation is independent.**
+
+Now try the same thing *within* a single conversation — the model will remember your name because the playground is maintaining the messages array for you behind the scenes. That messages array is the only reason it works.
+
+**Key observation:** the playground itself is a minimal application layer sitting on top of a stateless model. It is doing exactly what your orchestrator will do: accumulating messages and replaying them on every call.
+
+---
+
+## 8. Memory Is Added by System Code — The Orchestrator
+
+The component that manages the messages array, calls the model, and decides what to do with the response is called an **orchestrator**.
+
+Here is the core of ours, lightly simplified:
+
+```typescript
+async function orchestrate(userMessage: string) {
+  // 1. Add the new user message to the conversation history
+  messages.push({ role: "user", content: userMessage });
+
+  while (true) {
+    // 2. Call the model with the FULL conversation history every time
+    const response = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: messages,
+      tools: availableTools,
+    });
+
+    const choice = response.choices[0];
+
+    // 3. Did the model want to call a tool?
+    if (choice.finish_reason === "tool_calls") {
+      const toolCall = choice.message.tool_calls[0];
+
+      // Execute the tool and get the result
+      const result = await executeTool(toolCall.function.name, toolCall.function.arguments);
+
+      // Add both the model's tool request AND the tool result to history
+      messages.push(choice.message);
+      messages.push({ role: "tool", tool_call_id: toolCall.id, content: result });
+
+      // Loop — call the model again with the tool result in context
+      continue;
+    }
+
+    // 4. Model is done — add its final response and return
+    messages.push(choice.message);
+    return choice.message.content;
+  }
+}
+```
+
+The full, annotated version is in [`src/services/orchestrator.ts`](src/services/orchestrator.ts).
+
+This loop is the heart of every AI agent. Everything else — streaming, retries, multi-agent routing — is an elaboration of this pattern.
+
+---
+
+## 9. What Is an Agent?
+
+There is a lot of hype around the word "agent". A useful working definition:
+
+> **An agent is a language model that can take actions.**
+
+The minimal version of that is: **a chatbot with tools**.
+
+A tool is any function you expose to the model. You describe it in JSON (name, description, parameters) and the model decides when to call it, what arguments to pass, and how to incorporate the result. The model never calls the function itself — it emits a structured request, your code runs the function, and you hand the result back.
+
+```
+User:  "What are Alice's employee benefits?"
+         ↓
+Model: I need to look that up.
+       → tool_call: benefits_lookup({ employee_id: "EMP001" })
+         ↓
+Code:  runs benefits_lookup, returns JSON
+         ↓
+Model: (reads the JSON result)
+       "Alice Johnson has Premium PPO health coverage, 
+        4 weeks annual leave, and is enrolled in the 
+        401(k) with 6% employer match."
+         ↓
+User:  sees the final answer
+```
+
+The model contributed reasoning and natural language. The tool contributed real data. Neither could produce the correct answer alone.
+
+Tools are defined in [`src/services/tools.ts`](src/services/tools.ts). Each tool has a JSON schema (what the model sees) and an `execute()` function (what actually runs). To add a new capability to the agent, add it there.
+
+---
+
+## 10. Hands-On — Play With a Real Agent
+
+The sandbox at **https://paddypawprints.github.io/agentforge/** (and the local version you cloned) is a live environment where you can experiment with a minimal but complete agent:
+
+- A system prompt you can edit in real time
+- A `benefits_lookup` tool that queries a mock employee benefits database
+- Full visibility into the messages array so you can watch the orchestrator work
+- Step-by-step exercises that build from a plain chatbot up to a working agent
+
+### Workshop Exercises
+
+---
+
+#### Step 1 — System Prompt: Shape the Model's Behaviour
+
+1. Open the sandbox. The **SYSTEM PROMPT** panel is expanded by default with the **HR CHATBOT** preset active.
+2. Read the prompt — it instructs the model to answer HR questions only and refuse anything else.
+3. Send an on-topic message: *"What is the PTO policy?"* — the model will attempt to answer but has no actual policy document, so it will either make something up or say it doesn't have that information.
+4. Send an off-topic one: *"Write me a poem."* — the model should decline.
+5. Edit the system prompt text directly. Change the refusal instruction to something permissive. Click **APPLY**.
+6. Ask the off-topic question again — observe how the model's behaviour changes.
+
+**What you learned:** The system prompt shapes *how* the model behaves, but it does not give the model *knowledge*. Without a document or tool, the model only has what it was trained on. Adding real data is what the next two exercises are about.
+
+---
+
+#### Step 2 — Grounding: Embedding a Document in the Prompt
+
+1. In the **SYSTEM PROMPT** panel, click the **BENEFITS DOC** preset button.
+2. Scroll through the prompt — you will see the full 2026 employee benefits policy injected inline between `--- BENEFITS POLICY ---` markers.
+3. Ask a question that is answered in the document: *"How many days of annual leave do employees get?"*
+4. Ask a question not covered by the document: *"What is the process for requesting a laptop?"* — the model should say it cannot answer from the document.
+
+**What you learned:** Grounding means injecting data directly into the prompt so the model can refer to it. It is the simplest form of retrieval — no database, no search, just text in the context window.
+
+---
+
+#### Step 3 — Tools: Manual Invocation in the Sandbox
+
+1. Find the **TOOL SANDBOX** panel (below the exercise steps, left column).
+2. Enter `EMP001` in the employee ID field and click **LOOKUP BENEFITS**.
+3. Examine the JSON that comes back — name, health plan, leave entitlement, 401(k) match, and an SSN field.
+4. Try `EMP002` and `EMP003` to see different employee records.
+
+**What you learned:** A tool is just a function that returns structured data. The JSON schema you saw defined in `tools.ts` is what the model reads to know the tool exists and what arguments to pass. The model never calls the function itself — it requests a call and your code runs it.
+
+---
+
+#### Step 4 — Ask Without Tools: Observe Hallucination
+
+1. Switch back to the **HR CHATBOT** preset (no tools).
+2. Click **CLEAR** in the header to reset the conversation.
+3. Ask: *"What are the benefits for EMP001?"*
+4. The model has no access to the benefits database. Depending on the model and temperature setting, it may refuse and admit it doesn't know, or it may confidently invent plausible-sounding but entirely fabricated details.
+5. Try changing the model or adjusting the **TEMP** slider and ask again — you will likely see different behaviours.
+
+**What you learned:** Whether a model hallucinates or hedges depends on how it was trained and how much randomness (temperature) is in the output. You cannot rely on the model to know when it doesn't know something. The only reliable fix is to give it the data — which is what grounding and tools are for.
+
+---
+
+#### Step 5 — Manual Grounding: Paste the Tool Output Yourself
+
+1. Go back to the Tool Sandbox and run `EMP001` again to get the JSON output.
+2. Copy the full JSON result.
+3. In the chat, send a new message: paste the JSON and follow it with *"Given this data, what are the benefits for this employee?"*
+4. The model now has the data inline and will give a correct answer.
+
+**What you learned:** You just manually did what the orchestrator will do automatically in the next step. Adding the tool result to the messages array is the entire mechanism — there is no magic. The model simply reads whatever is in the conversation history.
+
+---
+
+#### Step 6 — The Agent Loop: Let the Orchestrator Do It
+
+1. Click the **HR AGENT** preset. This prompt tells the model it has access to the `benefits_lookup` tool.
+2. Click **CLEAR** to start a fresh conversation.
+3. Ask: *"What are the benefits for EMP001?"*
+4. Watch the message trace in the right panel:
+   - The model emits a `tool_calls` response instead of a plain answer
+   - The orchestrator detects `finish_reason === "tool_calls"`, runs `benefits_lookup("EMP001")`, and appends the result to the messages array
+   - The orchestrator calls the model again with the tool result in context
+   - The model now answers correctly
+5. Try a follow-up: *"What about EMP002?"* — the orchestrator repeats the loop.
+
+**What you learned:** The agent loop is exactly steps 3–5 automated. The orchestrator maintains the messages array, dispatches tools when the model requests them, and keeps looping until `finish_reason === "stop"`. The model decides *when* to call a tool and *what arguments* to use — your code decides *how* to execute it.
+
+---
+
+#### Read the Code — How the Orchestrator Works
+
+Now that you have seen the agent loop in action, open [`src/services/orchestrator.ts`](src/services/orchestrator.ts). It is heavily commented and maps directly to what you just observed. Here is what each part does:
+
+**1. The messages array** (around the `groqHistory` variable)
+Every call to the model starts by building a fresh `groqHistory` array — system prompt first, then the user message. As the loop runs, tool calls and tool results are appended to this same array. This is the only "memory" the agent has.
+
+**2. First LLM call** (`callGroqAPI`)
+Sends `groqHistory` plus the tool schemas to the model. The tool schemas are JSON descriptions of what each tool is called, what it does, and what arguments it takes. The model reads these and decides whether to call one.
+
+**3. Checking `finish_reason`**
+The model's response includes a `finish_reason` field:
+- `"tool_calls"` — the model wants to call a tool before answering
+- `"stop"` — the model is done and the content field holds the final answer
+
+**4. The tool loop** (`while (choice.finish_reason === "tool_calls")`)
+When `finish_reason` is `"tool_calls"`:
+- Read the tool name and arguments from the model's response
+- Call `tool.execute(args)` — the same function you ran manually in Step 3
+- Append both the model's tool request *and* the tool result to `groqHistory`
+- Call the model again with the updated context
+- Repeat until `finish_reason === "stop"` or the loop limit is reached
+
+**5. Writing to the UI**
+The orchestrator calls `addMessage()` at each stage — user message, each LLM call, each tool result, and the final answer. The message history panel renders these in order, giving you the full execution trace you saw in Step 6.
+
+That is the complete agent. There is no hidden framework — everything is in those ~200 lines.
+
+---
+
+#### Bonus — Observability with Portkey
+
+Steps 7–9 require a free [Portkey](https://app.portkey.ai) account.
+
+**Step 7 — Create a Virtual Key**
+1. Go to [app.portkey.ai](https://app.portkey.ai) and sign in.
+2. Navigate to **Virtual Keys → Add Key**.
+3. Select **Groq** as the provider.
+4. Enter `aidaysf` as the slug and paste your Groq API key.
+5. Copy the Portkey API key shown at the top of the page.
+
+**Step 8 — Enable in the Sandbox**
+1. Check the **PORTKEY** checkbox in the sandbox header.
+2. Paste your Portkey API key into the field that appears.
+3. All LLM traffic now routes through the Portkey gateway.
+
+**Step 9 — Observe**
+1. Run the HR Agent query again (step 6).
+2. Switch to the Portkey dashboard and open the **Logs** tab.
+3. Inspect the request — you can see the full prompt sent to the model, token counts, latency, the tool call, the tool result, and any PII flagged (the SSN field in the employee record).
+
+**What you learned:** A gateway like Portkey gives you visibility and control over every model call without changing application code. In production this is how you track costs, enforce policies, and detect data leakage.
+
+### Architecture
 
 ```
 ┌─────────────────────────────────────────┐
@@ -53,18 +403,18 @@ Everything else is UI that visualises what those two files are doing.
                │ orchestrate(userQuery, tools)
 ┌──────────────▼──────────────────────────┐
 │           orchestrator.ts               │
-│  1. Build messages array                │
-│  2. Call LLM (Groq or Portkey)          │
+│  1. Append user message                 │
+│  2. Call LLM with full history          │
 │  3. finish_reason === "tool_calls"?      │
-│     → execute tool → inject result      │
+│     → execute tool → append result      │
 │     → call LLM again                    │
 │  4. finish_reason === "stop" → done     │
 └──────────────┬──────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
 │             tools.ts                    │
-│  benefits_lookup.execute(employee_id)   │
-│  → returns JSON with benefits + SSN     │
+│  benefits_lookup({ employee_id })       │
+│  → returns benefits JSON                │
 └─────────────────────────────────────────┘
 ```
 
@@ -79,7 +429,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. Enter your Groq key in the header — no `.env` file needed.
+Open `http://localhost:5173`. Enter your Groq key in the header — no `.env` file needed.
 
 ```bash
 npm run build    # production build → dist/
@@ -88,351 +438,37 @@ npm run preview  # preview the production build locally
 
 ---
 
-## Forking & Deploying Your Own Copy
+## Forking and Deploying Your Own Copy
 
 1. Fork the repo on GitHub
 2. Go to your fork's **Settings → Pages → Source → GitHub Actions**
 3. Push any change to `main` — the included workflow builds and deploys automatically
-4. Your app will be live at `https://<your-username>.github.io/agentforge/`
-
-
-## 📋 Prerequisites
-
-- **StackBlitz Account**: Free account at [stackblitz.com](https://stackblitz.com) (required to fork and save templates)
-- **Modern Browser**: Chrome, Firefox, Safari, or Edge (latest versions)
-- **No Local Installation Required**: StackBlitz runs entirely in the browser
-
-### Optional: Local Development
-- **Node.js**: v18+ (for running locally)
-- **npm**: v9+ (included with Node.js)
-- **Git**: For cloning the repository
-
-## 🚀 Quick Start
-
-### Option 1: StackBlitz (Recommended for Workshop)
-
-1. **Fork the Template**
-   - Open the StackBlitz template link provided by the instructor
-   - Click **"Fork"** in the top-right corner
-   - StackBlitz will create a copy in your account
-
-2. **Add Secrets (API Keys)**
-   - Click the **"Secrets"** icon (lock icon) in the left sidebar
-   - Add the following environment variables:
-     - `GROQ_API_KEY`: Your Groq API key (get from [console.groq.com](https://console.groq.com))
-     - `PORTKEY_API_KEY`: Your Portkey API key (optional, for governance demo)
-   - Secrets are encrypted and never exposed in the browser console
-
-3. **Run the Template**
-   - StackBlitz automatically installs dependencies and starts the dev server
-   - The preview pane (right side) shows the running app
-   - Open the **"Preview"** tab to interact with the agent
-
-### Option 2: Local Development
-
-1. **Clone the Repository**
-   ```bash
-   git clone <repository-url>
-   cd ai-agents-workshop
-   ```
-
-2. **Install Dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Configure Environment Variables**
-   ```bash
-   cp .env.example .env.local
-   ```
-   Edit `.env.local` and add your API keys:
-   ```
-   VITE_GROQ_API_KEY=your_groq_api_key_here
-   VITE_PORTKEY_API_KEY=your_portkey_api_key_here
-   ```
-
-4. **Start the Development Server**
-   ```bash
-   npm run dev
-   ```
-   Open `http://localhost:5173` in your browser
-
-5. **Build for Production**
-   ```bash
-   npm run build
-   ```
-
-## 🏗️ Architecture Overview
-
-This template demonstrates the **separation of agent logic from UI**, a core principle of production agent systems.
-
-### Key Concepts
-
-**Agent Logic ≠ UI**
-- The agent orchestrator is a pure state machine that manages messages and tool dispatch
-- The UI is a separate layer that displays state and triggers orchestrator actions
-- This separation allows the same orchestrator to power different interfaces (web, CLI, API)
-
-### Component Layers
-
-```
-┌─────────────────────────────────────────┐
-│         React UI Components             │
-│  (Display messages, handle user input)  │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│      Agent Orchestrator Service         │
-│  (Manage state, dispatch tools, track   │
-│   messages, handle tool responses)      │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│      Tool Implementations               │
-│  (benefits lookup, salary calculator)   │
-└─────────────────────────────────────────┘
-```
-
-### Data Flow
-
-1. **User Input** → UI component captures message
-2. **Dispatch** → Orchestrator adds message to history
-3. **Tool Check** → Orchestrator checks if agent requests a tool
-4. **Tool Execution** → Tool runs and returns result
-5. **Response** → Orchestrator adds tool result to history
-6. **Render** → UI displays updated messages array
-
-### State Management
-
-- **Messages Array**: Immutable list of all turns (user messages, agent responses, tool calls, tool results)
-- **Agent Store**: Zustand store holding messages and orchestrator state
-- **No Model State Leakage**: Each session starts fresh; no memory persists between runs
-
-## 📁 Key Files to Inspect
-
-### 1. **`src/types/agent.ts`** — Type Definitions
-Defines the message structure and tool types:
-- `Message`: User, assistant, or tool message
-- `ToolCall`: Structured tool request from the agent
-- `ToolResult`: Result returned by a tool
-
-**Why inspect it**: Understand the shape of data flowing through the system.
-
-### 2. **`src/services/agent-orchestrator.ts`** — Core Orchestrator
-The heart of the agent logic:
-- `AgentOrchestrator` class manages the message history
-- `processMessage()`: Sends a message to the agent and handles responses
-- `executeTool()`: Runs a tool and adds the result to history
-- `getMessages()`: Returns the current message history
-
-**Why inspect it**: See how the agent state machine works without UI concerns.
-
-### 3. **`src/store/agentStore.ts`** — State Store
-Zustand store for reactive state management:
-- `messages`: Current message history
-- `addMessage()`: Add a message to history
-- `clearHistory()`: Reset for a new session
-
-**Why inspect it**: Understand how React components subscribe to orchestrator state.
-
-### 4. **`src/services/tools.ts`** — Tool Implementations
-Mock tools used in the demo:
-- `benefitsLookup()`: Simulates querying an employee benefits database
-- `salaryCalculator()`: Simulates calculating adjusted salary
-
-**Why inspect it**: See how tools are invoked and how results are structured.
-
-### 5. **`src/components/hooks/use-agent-orchestrator.ts`** — React Hook
-Custom hook that bridges the orchestrator and React:
-- `useAgentOrchestrator()`: Provides orchestrator methods and state to components
-
-**Why inspect it**: See how to integrate the orchestrator into React components.
-
-## 🏃 How to Run Locally
-
-### Prerequisites
-- Node.js v18+ installed
-- npm v9+ installed
-
-### Steps
-
-1. **Install Dependencies**
-   ```bash
-   npm install
-   ```
-
-2. **Set Up Environment**
-   ```bash
-   cp .env.example .env.local
-   # Edit .env.local and add your API keys
-   ```
-
-3. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
-   Output:
-   ```
-   VITE v4.x.x  ready in xxx ms
-
-   ➜  Local:   http://localhost:5173/
-   ➜  press h to show help
-   ```
-
-4. **Open in Browser**
-   - Navigate to `http://localhost:5173`
-   - The app should load with the agent interface
-
-5. **Stop the Server**
-   - Press `Ctrl+C` in the terminal
-
-### Available npm Scripts
-
-```bash
-npm run dev      # Start development server with hot reload
-npm run build    # Build for production
-npm run preview  # Preview production build locally
-npm run lint     # Run ESLint
-npm run format   # Format code with Prettier
-```
-
-## 👥 Participant Exercises
-
-These exercises help you understand how agent orchestration works by observing the system in action.
-
-### Exercise 1: Observe the Messages Array
-
-**Objective**: Understand that the agent's "memory" is just a list of messages.
-
-**Steps**:
-1. Open the app in StackBlitz or locally
-2. In the browser **DevTools Console** (F12), run:
-   ```javascript
-   // Access the Zustand store (exposed for debugging)
-   window.__agentStore?.getState().messages
-   ```
-3. Send a message to the agent (e.g., "What are the health benefits?")
-4. Run the console command again and observe:
-   - A new **user message** was added
-   - The agent's **response** was added
-   - If a tool was called, a **tool call** and **tool result** were added
-
-**Key Insight**: The agent has no persistent memory—only the messages array. Each turn is stateless; the full history is passed to the model.
-
-### Exercise 2: Trace Tool Dispatch
-
-**Objective**: See how the agent requests tools and how results are returned.
-
-**Steps**:
-1. Open **DevTools Console** (F12)
-2. Send a message that triggers a tool (e.g., "Calculate my salary if I get a 10% raise")
-3. Watch the console for logs like:
-   ```
-   [Agent] Tool requested: salaryCalculator
-   [Agent] Tool result: { adjustedSalary: 110000 }
-   ```
-4. In the messages array, find:
-   - The **tool call** message (role: "assistant", content includes tool name)
-   - The **tool result** message (role: "tool", content includes the result)
-
-**Key Insight**: Tool dispatch is a two-step handshake:
-1. Agent requests a tool (included in its response)
-2. Orchestrator executes the tool and adds the result to history
-3. Next turn, the agent sees the result and can respond
-
-### Exercise 3: Inspect the Orchestrator State
-
-**Objective**: Understand the separation between agent logic and UI.
-
-**Steps**:
-1. Open the app and send a few messages
-2. Open **DevTools Console** and run:
-   ```javascript
-   // Get the full orchestrator state
-   window.__agentStore?.getState()
-   ```
-3. Observe:
-   - `messages`: Array of all turns
-   - `isLoading`: Whether the agent is processing
-   - `error`: Any errors that occurred
-4. The UI is just rendering this state—the orchestrator doesn't know about React
-
-**Key Insight**: The orchestrator is framework-agnostic. The same orchestrator could power a CLI, API, or mobile app.
-
-### Exercise 4: Reset and Start Fresh
-
-**Objective**: Verify that no state leaks between sessions.
-
-**Steps**:
-1. Send several messages to the agent
-2. Click the **"Clear History"** button
-3. In the console, run:
-   ```javascript
-   window.__agentStore?.getState().messages
-   ```
-4. Observe: The messages array is empty
-
-**Key Insight**: Each session is isolated. The agent has no memory of previous conversations.
-
-### Exercise 5: Modify a Tool and Observe
-
-**Objective**: See how changing tool behavior affects the agent.
-
-**Advanced**: If you're comfortable with code:
-1. Open `src/services/tools.ts`
-2. Modify the `salaryCalculator()` function to return a different value
-3. Send a message that triggers the tool
-4. Observe the new result in the messages array
-
-**Key Insight**: Tools are pluggable. You can swap implementations without changing the orchestrator.
-
-## 🔗 Integration with Other Sessions
-
-This template is part of a three-session workshop:
-
-1. **Session 1: Inference & Grounding** (Groq Playground)
-   - Demonstrates stateless inference
-   - Shows how grounding works in the system message
-
-2. **Session 2: State & Orchestration** (This Template)
-   - Demonstrates stateful message history
-   - Shows tool dispatch and orchestration
-
-3. **Session 3: Governance & FinOps** (Portkey Gateway)
-   - Adds security and cost tracking
-   - Integrates with this template via the `PORTKEY_API_KEY`
-
-## 🛠️ Troubleshooting
-
-### "API Key Not Found" Error
-- **StackBlitz**: Check that you added the secret in the Secrets panel
-- **Local**: Check that `.env.local` has the correct key name (must start with `VITE_`)
-
-### "Tool Not Found" Error
-- The agent requested a tool that doesn't exist in `src/services/tools.ts`
-- Check the console logs to see which tool was requested
-- Add the tool to `tools.ts` or update the agent's system prompt
-
-### App Won't Load
-- **StackBlitz**: Refresh the page (Cmd+R or Ctrl+R)
-- **Local**: Check that `npm run dev` is running and no errors in the terminal
-
-### Messages Array Not Updating
-- Check that the orchestrator is being called correctly
-- Open DevTools Console and look for error messages
-- Verify that the API key is valid
-
-## 📚 Further Reading
-
-- [Groq API Documentation](https://console.groq.com/docs)
-- [Portkey Gateway Documentation](https://docs.portkey.ai)
-- [React Hooks Documentation](https://react.dev/reference/react)
-- [Zustand State Management](https://github.com/pmndrs/zustand)
-
-## 📝 License
-
-This workshop material is provided by the Internet Society for educational purposes.
+4. Your live app will be at `https://<your-username>.github.io/agentforge/`
 
 ---
 
-**Questions?** Ask the instructor during the workshop or check the workshop Slack channel.
+## Prerequisites
+
+- Node.js v18+ and npm v9+ (for local development)
+- A free Groq account at [console.groq.com](https://console.groq.com) — no credit card required
+- A modern browser (Chrome, Firefox, Safari, or Edge)
+
+---
+
+## Further Reading
+
+- [Groq API Documentation](https://console.groq.com/docs)
+- [OpenAI Chat Completions API reference](https://platform.openai.com/docs/api-reference/chat) — Groq uses the same interface
+- [Groq model playground](https://console.groq.com/playground)
+
+---
+
+## Credits
+
+The agent app was scaffolded and generated with [pre.dev](https://pre.dev) — an AI-powered software architect that takes a project brief and produces a working codebase. If you want to build your own agent app from scratch, it's a great place to start.
+
+---
+
+## License
+
+Workshop material provided for educational purposes.
