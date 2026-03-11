@@ -450,8 +450,18 @@ npm run preview  # preview the production build locally
 ## Prerequisites
 
 - Node.js v18+ and npm v9+ (for local development)
-- A free Groq account at [console.groq.com](https://console.groq.com) — no credit card required
+- A free Groq account and API key — no credit card required (see below)
 - A modern browser (Chrome, Firefox, Safari, or Edge)
+
+### Getting a Groq API Key
+
+1. Go to [console.groq.com](https://console.groq.com) and sign up for a free account.
+2. Once logged in, click **API Keys** in the left sidebar.
+3. Click **Create API Key**, give it a name (e.g. `agentforge-workshop`), and click **Submit**.
+4. Copy the key — you will only see it once.
+5. Paste it into the **API KEY** field in the sandbox header. It is stored only in your browser session and never sent anywhere except directly to Groq.
+
+That's it. No billing setup, no credit card. The free tier is generous enough for a full workshop session.
 
 ---
 
