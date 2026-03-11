@@ -465,7 +465,11 @@ npm run preview  # preview the production build locally
 
 ## Credits
 
-The agent app was scaffolded and generated with [pre.dev](https://pre.dev) — an AI-powered software architect that takes a project brief and produces a working codebase. If you want to build your own agent app from scratch, it's a great place to start.
+- **[pre.dev](https://pre.dev)** — The agent app was scaffolded and generated with pre.dev, an AI-powered software architect that takes a project brief and produces a working codebase. If you want to build your own agent app from scratch, it's a great place to start.
+
+- **[Groq](https://groq.com)** — Provides the LLM inference used throughout this workshop. Groq's hardware delivers extremely fast responses and a generous free tier, making it ideal for hands-on learning. Get your free API key at [console.groq.com](https://console.groq.com).
+
+- **[GitHub](https://github.com)** — Hosts the source code and serves the sandbox via GitHub Pages. Fork the repo, push a change, and your own live version deploys automatically.
 
 ---
 
