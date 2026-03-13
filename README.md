@@ -8,6 +8,49 @@ Source code: **https://github.com/paddypawprints/agentforge**
 
 ---
 
+## Key Takeaways
+
+Four concepts underpin everything in this workshop:
+
+**Model** — receives text, outputs text. That's it. A stateless function you call over HTTP.
+
+**Chatbot** — software that saves past interactions and feeds them back to the model each turn. Memory is not a model feature — it is application code.
+
+**Agent** — a chatbot that is told it has access to tools, with software that can actually call them. An agent is a loop: the model decides what to do, the software runs the tool, the result is fed back, the model answers.
+
+**Tool** — a piece of software that performs a function (read a file, query a database, make a payment). The result is injected into the conversation so the model can act on it. The model never calls the function itself — it emits a structured request and your code executes it.
+
+---
+
+## Scope — Who This Is For
+
+This workshop is aimed at **technically literate people who are already comfortable using LLM chatbots** (ChatGPT, Claude, Gemini, etc.) but have not yet written code that calls a model API.
+
+By the end of this session you will:
+
+- Understand the difference between a raw language model and a chatbot product
+- Know why memory is not a model feature — it is application code
+- Have read and run a real agent loop (< 100 lines of TypeScript)
+- Be able to extend the agent with your own tool
+
+No prior AI/ML background is required. Basic familiarity with JavaScript or TypeScript is helpful but not essential — all the key code is annotated line-by-line.
+
+---
+
+## Workshop Agenda (90 min)
+
+| Time | Section | Activity |
+|------|---------|----------|
+| 0:00 – 0:10 | **Introduction** | Key concepts, architecture overview, get API keys |
+| 0:10 – 0:15 | **Setup** | Open the sandbox, confirm API key is working |
+| 0:15 – 1:15 | **Exercises 1–7** | Hands-on: model → memory → system prompt → grounding → tools → agent loop |
+| 1:15 – 1:30 | **Code Review** | Read the three service files (~200 lines total) |
+| 1:30 – 1:45 | **Portkey (optional)** | Observability: connect Portkey, inspect logs, find PII |
+
+Steps 9–11 (Portkey) are optional — skip them if you are running short on time or come back to them afterwards.
+
+---
+
 ## Before You Start — Get Your API Keys
 
 ### Groq API Key (required)
@@ -45,36 +88,7 @@ You now have a virtual key — a named alias for your Groq key stored securely i
 
 ---
 
-## Key Takeaways
-
-Four concepts underpin everything in this workshop:
-
-**Model** — receives text, outputs text. That's it. A stateless function you call over HTTP.
-
-**Chatbot** — software that saves past interactions and feeds them back to the model each turn. Memory is not a model feature — it is application code.
-
-**Agent** — a chatbot that is told it has access to tools, with software that can actually call them. An agent is a loop: the model decides what to do, the softwaqre runs the tool runs, the result is fed back, the model answers.
-
-**Tool** — a piece of software that performs a function (read a file, query a database, make a payment). The result is injected into the conversation so the model can act on it. The model never calls the function itself — it emits a structured request and your code executes it.
-
----
-
-## 1. Scope — Who This Is For
-
-This workshop is aimed at **technically literate people who are already comfortable using LLM chatbots** (ChatGPT, Claude, Gemini, etc.) but have not yet written code that calls a model API.
-
-By the end of this session you will:
-
-- Understand the difference between a raw language model and a chatbot product
-- Know why memory is not a model feature — it is application code
-- Have read and run a real agent loop (< 100 lines of TypeScript)
-- Be able to extend the agent with your own tool
-
-No prior AI/ML background is required. Basic familiarity with JavaScript or TypeScript is helpful but not essential — all the key code is annotated line-by-line.
-
----
-
-## 2. All the Code Is Here — Clone and Experiment
+## 1. All the Code Is Here — Clone and Experiment
 
 Everything shown in this presentation is in this repository. There are no hidden services, no proprietary SDKs, no magic. Clone it, run it locally, and break things.
 
@@ -89,14 +103,15 @@ Open `http://localhost:5173`. Enter your free Groq API key in the header and you
 
 Get a free Groq API key (no credit card required) at [console.groq.com](https://console.groq.com).
 
-The two files that contain every concept in this workshop:
+The three files that contain every concept in this workshop:
 
 | File | What it does |
 |------|-------------|
-| [`src/services/orchestrator.ts`](src/services/orchestrator.ts) | The agent loop — memory, calling the model, running tools |
+| [`src/services/memory.ts`](src/services/memory.ts) | Conversation memory — stores past turns and injects them into every new prompt |
+| [`src/services/orchestrator.ts`](src/services/orchestrator.ts) | The agent loop — builds the prompt, calls the model, runs tools, returns the result |
 | [`src/services/tools.ts`](src/services/tools.ts) | Tool definitions — what the model can call and how |
 
-Everything else is UI that visualises those two files.
+Everything else is UI that visualises those three files.
 
 ---
 
@@ -162,7 +177,7 @@ graph TD
     %% The API interaction flows Up-to-Down
 ```
 
-## 3. Model vs Chatbot — Memory and the Loop
+## 2. Model vs Chatbot — Memory and the Loop
 
 When you open ChatGPT and have a multi-turn conversation, you might naturally assume the model "remembers" what you said. It does not.
 
@@ -192,7 +207,7 @@ This is the single most important concept in this workshop. Everything else buil
 
 ---
 
-## 4. Raw Models — What Are We Actually Working With?
+## 3. Raw Models — What Are We Actually Working With?
 
 Underneath every chatbot product is a foundation model: a large neural network trained to predict the next token in a sequence of text. Common open-weight and hosted models include:
 
@@ -214,7 +229,7 @@ For this workshop we use **Groq** as our inference provider because:
 
 ---
 
-## 5. The Sandbox — Where the Rest of This Tutorial Happens
+## 4. The Sandbox — Where the Rest of This Tutorial Happens
 
 Everything from here on takes place in the sandbox app. Open it now:
 
@@ -239,7 +254,7 @@ Enter your Groq API key in the **API KEY** field in the header. The key is store
 
 ---
 
-## 6. Try It in the App — Notice the Missing Memory
+## 5. Try It in the App — Notice the Missing Memory
 
 Open the sandbox: **https://paddypawprints.github.io/agentforge/** (or `http://localhost:5173` if running locally). Make sure your Groq API key is entered in the header.
 
@@ -258,7 +273,7 @@ Click **CLEAR** to wipe memory and try again. After the reset, it forgets — co
 
 ---
 
-## 7. Memory Is Added by System Code — The Orchestrator
+## 6. Memory Is Added by System Code — The Orchestrator
 
 The component that manages the messages array, calls the model, and decides what to do with the response is called an **orchestrator**.
 
@@ -307,7 +322,7 @@ This loop is the heart of every AI agent. Everything else — streaming, retries
 
 ---
 
-## 8. What Is an Agent?
+## 7. What Is an Agent?
 
 There is a lot of hype around the word "agent". A useful working definition:
 
@@ -339,7 +354,7 @@ Tools are defined in [`src/services/tools.ts`](src/services/tools.ts). Each tool
 
 ---
 
-## 9. Hands-On — Play With a Real Agent
+## 8. Hands-On — Play With a Real Agent
 
 The sandbox at **https://paddypawprints.github.io/agentforge/** (and the local version you cloned) is a live environment where you can experiment with a minimal but complete agent:
 
