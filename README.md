@@ -1,10 +1,10 @@
 # AgentForge — Building Your First AI Agent
 
-A hands-on workshop for technical people who use LLM chatbots every day but want to understand — and write — the code that makes them work.
+A hands-on workshop for technical people who use LLM chatbots every day but want to understand how they work. If you code then you can look at the code that makes them work and maybe write your own agent. 
 
 Hands-on sandbox: **https://paddypawprints.github.io/agentforge/**
+
 Source code: **https://github.com/paddypawprints/agentforge**
-Built with [pre.dev](https://pre.dev)
 
 ---
 
@@ -21,7 +21,8 @@ You cannot send messages in the sandbox without a Groq API key. Here is how to g
 5. Give the key a name — anything works, e.g. `agentforge-workshop`.
 6. Click **Submit**. The key is shown once — copy it now and save it somewhere safe (e.g. a notes app). You will need it again for the Portkey bonus exercises.
 7. Return to the sandbox and paste the key into the **API KEY** field in the top-right of the header.
-8. Press Enter or click away. The field will show a green border when a key is present.
+8. _Save your key_. If you do the AI gateway exercises later you will need it.
+9. Press Enter or click away. The field will show a green border when a key is present.
 
 The key is stored only in your browser's memory for the current session. It is sent directly to Groq and nowhere else. If you close and reopen the tab you will need to paste it again.
 
@@ -41,6 +42,20 @@ To get a free Portkey key:
 6. Paste your Groq API key into the provider key field and save.
 
 You now have a virtual key — a named alias for your Groq key stored securely in Portkey. The sandbox never needs your real Groq key when routing through Portkey; it uses the virtual key slug instead.
+
+---
+
+## Key Takeaways
+
+Four concepts underpin everything in this workshop:
+
+**Model** — receives text, outputs text. That's it. A stateless function you call over HTTP.
+
+**Chatbot** — software that saves past interactions and feeds them back to the model each turn. Memory is not a model feature — it is application code.
+
+**Agent** — a chatbot that is told it has access to tools, with software that can actually call them. An agent is a loop: the model decides what to do, the softwaqre runs the tool runs, the result is fed back, the model answers.
+
+**Tool** — a piece of software that performs a function (read a file, query a database, make a payment). The result is injected into the conversation so the model can act on it. The model never calls the function itself — it emits a structured request and your code executes it.
 
 ---
 
@@ -84,6 +99,68 @@ The two files that contain every concept in this workshop:
 Everything else is UI that visualises those two files.
 
 ---
+
+## Architecture
+
+```mermaid
+graph TD
+    %% Define main system boundaries
+    subgraph "The Cloud (Model Provider)"
+        FM["Foundation Model"]
+        GW["AI Gateway"]
+    end
+
+    subgraph "Internal Systems (The 'Agent')"
+        direction TB
+        subgraph "Application Logic (Software I Wrote)"
+            direction LR
+            SP["System Prompt"]
+            API["Orchestrator*"]
+            TC{"Tool Call?"}
+            GTD["Get employee data"]
+        end
+        subgraph "Internal Infrastructure"
+            DB[("(lookup database)\ndefined in specs")]
+        end
+    end
+
+    %% External Inputs and Outputs
+    User["User"] -->|"(Input) prompt"| SP
+    API -->|"(Output) answer"| User
+
+    %% Cloud Interaction (through Gateway)
+    FM <==> GW
+    GW <==>|"*call/response\nAPI / Cloud"| API
+
+    %% Agent Internal Flow
+    SP --> API
+    API --> TC
+    TC -->|Yes| GTD
+    TC -->|No / Complete| API
+
+    %% Tool Interaction
+    GTD --> DB
+    DB --> GTD
+
+    GTD -.->|Tool result -> next step| API
+
+    %% Styling and Labels (annotations from sketch)
+    linkStyle 0,1 stroke-width:2px;
+    linkStyle 4,5 stroke-width:2px,stroke-dasharray: 5 5;
+
+    %% Add text annotations to specific nodes
+    classDef annotation fill:none,stroke:none,font-style:italic;
+    FM:::annotation
+    
+    %% Labels for clarity based on original notes
+    %% note right of GW: limits/controls on tasks
+    %% note left of SP: System Prompt
+    %% note right of DB: tool (lookup database)
+
+    %% Flow direction hints
+    %% The main logic flows Left-to-Right
+    %% The API interaction flows Up-to-Down
+```
 
 ## 3. Model vs Chatbot — Memory and the Loop
 
@@ -137,79 +214,51 @@ For this workshop we use **Groq** as our inference provider because:
 
 ---
 
-## 5. Groq Provides a Model Playground
+## 5. The Sandbox — Where the Rest of This Tutorial Happens
 
-Before writing any code, it is worth spending a few minutes with Groq's built-in playground to get a feel for what a raw model looks like.
+Everything from here on takes place in the sandbox app. Open it now:
 
-Go to [console.groq.com/playground](https://console.groq.com/playground).
+**https://paddypawprints.github.io/agentforge/**
 
-You will see:
+Or run it locally:
 
-- A **model selector** — choose from the available hosted models
-- A **system prompt** field — instructions you give the model before the conversation starts
-- A **chat interface** — send messages and see responses
-- **Token counts and latency** — visible on every response
-
-This is the same interface you will be controlling programmatically in minutes.
-
----
-
-## 6. Connecting to Groq — API Keys and the SDK
-
-Groq's API is compatible with the OpenAI SDK. You can switch between providers by changing the `baseURL` and `apiKey`:
-
-```typescript
-import Groq from "groq-sdk";
-
-const groq = new Groq({ apiKey: "your-key-here", dangerouslyAllowBrowser: true });
-
-const response = await groq.chat.completions.create({
-  model: "llama-3.3-70b-versatile",
-  messages: [
-    { role: "system",  content: "You are a helpful assistant." },
-    { role: "user",    content: "What is TypeScript?" },
-  ],
-});
-
-console.log(response.choices[0].message.content);
+```bash
+git clone https://github.com/paddypawprints/agentforge.git
+cd agentforge && npm install && npm run dev
 ```
 
-That is the complete minimum. One function call, one response. No framework, no agent, just a model.
+Then open `http://localhost:5173`.
 
-### Temperature
+The app has three main areas:
 
-Every call accepts a `temperature` parameter (0.0 – 2.0) that controls how random the output is:
+- **Header** — API key input, model selector, temperature slider, agent mode toggle, and optional Portkey routing
+- **System Prompt panel** (left) — editable system prompt with four presets: CHAT BOT, HR CHATBOT, BENEFITS DOC, HR AGENT
+- **Chat + Trace panel** (right) — send messages and watch every LLM call, tool invocation, and response in the trace
 
-| Range | Effect |
-|-------|--------|
-| **0.0** | Deterministic — always picks the most likely token. Best for tool-use and structured output. |
-| **0.7 – 1.0** | Balanced — the typical default. Good for general chat. |
-| **1.0 – 1.5** | More creative and varied output. |
-| **1.5 – 2.0** | Very random — often incoherent. Rarely useful. |
-
-For an agent making tool calls, keep temperature low (0.0–0.5) so it reliably produces well-formed requests. For open-ended conversation, 0.7–1.0 is the sweet spot. You can adjust this in real time using the TEMP slider in the sandbox header.
+Enter your Groq API key in the **API KEY** field in the header. The key is stored only in your browser's memory for this session — it is sent directly to Groq and nowhere else.
 
 ---
 
-## 7. Try It in the Playground — Notice the Missing Memory
+## 6. Try It in the App — Notice the Missing Memory
 
-Open the Groq playground at [console.groq.com/playground](https://console.groq.com/playground).
+Open the sandbox: **https://paddypawprints.github.io/agentforge/** (or `http://localhost:5173` if running locally). Make sure your Groq API key is entered in the header.
 
-1. Select any model (e.g. `llama-3.3-70b-versatile`)
-2. Set the system prompt to: `You are a helpful chatbot.`
-3. Send a message: `My name is Alex.`
-4. The model responds and acknowledges your name.
-5. Now click **"New conversation"** (or the equivalent reset button) and ask: `What is my name?`
+1. Make sure **AGENT MODE** is **OFF** — this sends each message directly to the model with no orchestrator in the middle.
+2. Send a message: `My name is Alex.`
+3. The model responds and acknowledges your name.
+4. Send a second message: `What is my name?`
 
-The model says it does not know. **Each conversation is independent.**
+The model says it does not know. **Each request is a fresh, independent call to the LLM.** Nothing carried over.
 
-Now try the same thing *within* a single conversation — the model will remember your name because the playground is maintaining the messages array for you behind the scenes. That messages array is the only reason it works.
+Now turn **AGENT MODE ON** and select the **CHAT BOT** preset. Repeat the same two messages. The model now remembers — because the orchestrator is rebuilding the full conversation history and sending it on every call.
 
-**Key observation:** the playground itself is a minimal application layer sitting on top of a stateless model. It is doing exactly what your orchestrator will do: accumulating messages and replaying them on every call.
+Click **CLEAR** to wipe memory and try again. After the reset, it forgets — confirming that the memory lives in the app, not in the model.
+
+**Key observation:** the difference between a stateless model call and a "chatbot" is entirely in application code. The orchestrator accumulates `{ user, assistant }` pairs in `memory.ts` and prepends them to every new prompt. That is the complete mechanism.
 
 ---
 
-## 8. Memory Is Added by System Code — The Orchestrator
+## 7. Memory Is Added by System Code — The Orchestrator
 
 The component that manages the messages array, calls the model, and decides what to do with the response is called an **orchestrator**.
 
@@ -258,7 +307,7 @@ This loop is the heart of every AI agent. Everything else — streaming, retries
 
 ---
 
-## 9. What Is an Agent?
+## 8. What Is an Agent?
 
 There is a lot of hype around the word "agent". A useful working definition:
 
@@ -290,7 +339,7 @@ Tools are defined in [`src/services/tools.ts`](src/services/tools.ts). Each tool
 
 ---
 
-## 10. Hands-On — Play With a Real Agent
+## 9. Hands-On — Play With a Real Agent
 
 The sandbox at **https://paddypawprints.github.io/agentforge/** (and the local version you cloned) is a live environment where you can experiment with a minimal but complete agent:
 
@@ -307,153 +356,217 @@ You will need your Groq API key in the **API KEY** field in the header — see *
 
 ---
 
-#### Step 1 — System Prompt: Shape the Model's Behaviour
+#### Step 1 — Raw Model: No Memory
 
-1. Open the sandbox. The **SYSTEM PROMPT** panel is expanded by default with the **HR CHATBOT** preset active.
-2. Read the prompt — it instructs the model to answer HR questions only and refuse anything else.
-3. Send an on-topic message: *"What is the PTO policy?"* — the model will attempt to answer but has no actual policy document, so it will either make something up or say it doesn't have that information.
-4. Send an off-topic one: *"Write me a poem."* — the model should decline.
-5. Edit the system prompt text directly. Change the refusal instruction to something permissive. Click **APPLY**.
-6. Ask the off-topic question again — observe how the model's behaviour changes.
+1. Make sure **AGENT MODE** is **OFF** (toggle in the header).
+2. Send: *"My name is [your name]."* — the model acknowledges it.
+3. Send: *"What is my name?"* — the model says it doesn't know.
+4. Each request is a fresh, stateless call to the LLM. There is no conversation. You are sending a single message and receiving a single reply.
 
-**What you learned:** The system prompt shapes *how* the model behaves, but it does not give the model *knowledge*. Without a document or tool, the model only has what it was trained on. Adding real data is what the next two exercises are about.
+**↳ The model is not magic — it only knows what you put in the prompt.**
 
 ---
 
-#### Step 2 — Grounding: Embedding a Document in the Prompt
+#### Step 2 — Memory: The Orchestrator Adds It
 
-1. In the **SYSTEM PROMPT** panel, click the **BENEFITS DOC** preset button.
-2. Scroll through the prompt — you will see the full 2026 employee benefits policy injected inline between `--- BENEFITS POLICY ---` markers.
-3. Ask a question that is answered in the document: *"How many days of annual leave do employees get?"*
-4. Ask a question not covered by the document: *"What is the process for requesting a laptop?"* — the model should say it cannot answer from the document.
+1. Turn **AGENT MODE ON** and select the **CHAT BOT** preset.
+2. Repeat the same two messages: tell it your name, then ask what your name is.
+3. It now remembers. The Orchestrator is injecting the previous turn into every new prompt automatically.
+4. Click **CLEAR** in the header to wipe memory and try again — after the reset it forgets again.
 
-**What you learned:** Grounding means injecting data directly into the prompt so the model can refer to it. It is the simplest form of retrieval — no database, no search, just text in the context window.
+**↳ "Memory" is just your app re-sending the conversation history every time.**
 
 ---
 
-#### Step 3 — Tools: Manual Invocation in the Sandbox
+#### Step 3 — System Prompt: Shape the Model's Behaviour
 
-1. Find the **TOOL SANDBOX** panel (below the exercise steps, left column).
+1. Select the **HR CHATBOT** preset. The system prompt restricts the model to HR topics.
+2. Send an on-topic message: *"What is the PTO policy?"* — the model answers (from training data, not real policy).
+3. Send an off-topic one: *"Write me a poem."* — the model declines.
+4. Edit the system prompt text directly — change the refusal instruction to something permissive — and ask again. Observe how behaviour shifts instantly.
+
+**↳ The system prompt is your product — it's how you turn a general model into a specific assistant.**
+
+---
+
+#### Step 4 — Grounding: Inject a Document
+
+1. Select the **BENEFITS DOC** preset. Scroll the system prompt — the full 2026 HR policy document is injected inline.
+2. Ask: *"What is the parental leave policy?"* — the model answers from the text.
+3. Ask something not in the document: *"What is the process for requesting a laptop?"* — the model correctly says it cannot find that information.
+4. Notice the difference: the model is not searching the internet or a database — it is reading text you put in the prompt.
+
+**↳ LLMs don't need to be fine-tuned on your data — just put it in the prompt.**
+
+---
+
+#### Step 5 — Tool Sandbox: Run a Tool Manually
+
+1. Find the **TOOL SANDBOX** panel (left column, below the exercise steps).
 2. Enter `EMP001` in the employee ID field and click **LOOKUP BENEFITS**.
-3. Examine the JSON that comes back — name, health plan, leave entitlement, 401(k) match, and an SSN field.
-4. Try `EMP002` and `EMP003` to see different employee records.
+3. Examine the JSON that comes back — name, health plan, leave entitlement, 401(k) match, SSN.
+4. Try `EMP002`, `EMP003`, `EMP004` to see different records.
 
-**What you learned:** A tool is just a function that returns structured data. The JSON schema you saw defined in `tools.ts` is what the model reads to know the tool exists and what arguments to pass. The model never calls the function itself — it requests a call and your code runs it.
-
----
-
-#### Step 4 — Ask Without Tools: Observe Hallucination
-
-1. Switch back to the **HR CHATBOT** preset (no tools).
-2. Click **CLEAR** in the header to reset the conversation.
-3. Ask: *"What are the benefits for EMP001?"*
-4. The model has no access to the benefits database. Depending on the model and temperature setting, it may refuse and admit it doesn't know, or it may confidently invent plausible-sounding but entirely fabricated details.
-5. Try changing the model or adjusting the **TEMP** slider and ask again — you will likely see different behaviours.
-
-**What you learned:** Whether a model hallucinates or hedges depends on how it was trained and how much randomness (temperature) is in the output. You cannot rely on the model to know when it doesn't know something. The only reliable fix is to give it the data — which is what grounding and tools are for.
+**↳ A tool is just a function that returns data — nothing AI-specific about it.**
 
 ---
 
-#### Step 5 — Manual Grounding: Paste the Tool Output Yourself
+#### Step 6 — Manual Grounding: Play the Role of the Agent
 
-1. Go back to the Tool Sandbox and run `EMP001` again to get the JSON output.
-2. Copy the full JSON result.
-3. In the chat, send a new message: paste the JSON and follow it with *"Given this data, what are the benefits for this employee?"*
-4. The model now has the data inline and will give a correct answer.
+1. Switch to the **HR CHATBOT** preset (no tools). Click **CLEAR**.
+2. Ask: *"What are EMP001's benefits?"* — the model doesn't have that data. It may hallucinate or hedge.
+3. Go back to the Tool Sandbox, copy the full JSON result for EMP001.
+4. Paste the JSON into the chat and ask: *"Given this data, what are this employee's benefits?"*
+5. The model now answers correctly — because you put the data in the prompt.
 
-**What you learned:** You just manually did what the orchestrator will do automatically in the next step. Adding the tool result to the messages array is the entire mechanism — there is no magic. The model simply reads whatever is in the conversation history.
+**↳ You just played the role of the agent — the orchestrator automates exactly this.**
 
 ---
 
-#### Step 6 — The Agent Loop: Let the Orchestrator Do It
+#### Step 7 — Agent + Tools: Let the Orchestrator Do It
 
-1. Click the **HR AGENT** preset. This prompt tells the model it has access to the `benefits_lookup` tool.
-2. Click **CLEAR** to start a fresh conversation.
-3. Ask: *"What are the benefits for EMP001?"*
-4. Watch the message trace in the right panel:
+1. Select the **HR AGENT** preset. Click **CLEAR**.
+2. Ask: *"What are the benefits for EMP001?"*
+3. Watch the trace panel on the right:
    - The model emits a `tool_calls` response instead of a plain answer
-   - The orchestrator detects `finish_reason === "tool_calls"`, runs `benefits_lookup("EMP001")`, and appends the result to the messages array
-   - The orchestrator calls the model again with the tool result in context
-   - The model now answers correctly
-5. Try a follow-up: *"What about EMP002?"* — the orchestrator repeats the loop.
+   - The Orchestrator detects `finish_reason === "tool_calls"`, runs `benefits_lookup("EMP001")`, and appends the result to the messages array
+   - The Orchestrator calls the model again with the tool result in context
+   - The model produces the final answer
+4. Try `EMP002`–`EMP004` and multi-employee queries.
 
-**What you learned:** The agent loop is exactly steps 3–5 automated. The orchestrator maintains the messages array, dispatches tools when the model requests them, and keeps looping until `finish_reason === "stop"`. The model decides *when* to call a tool and *what arguments* to use — your code decides *how* to execute it.
-
----
-
-#### Read the Code — How the Orchestrator Works
-
-Now that you have seen the agent loop in action, open [`src/services/orchestrator.ts`](src/services/orchestrator.ts). It is heavily commented and maps directly to what you just observed. Here is what each part does:
-
-**1. The messages array** (around the `groqHistory` variable)
-Every call to the model starts by building a fresh `groqHistory` array — system prompt first, then the user message. As the loop runs, tool calls and tool results are appended to this same array. This is the only "memory" the agent has.
-
-**2. First LLM call** (`callGroqAPI`)
-Sends `groqHistory` plus the tool schemas to the model. The tool schemas are JSON descriptions of what each tool is called, what it does, and what arguments it takes. The model reads these and decides whether to call one.
-
-**3. Checking `finish_reason`**
-The model's response includes a `finish_reason` field:
-- `"tool_calls"` — the model wants to call a tool before answering
-- `"stop"` — the model is done and the content field holds the final answer
-
-**4. The tool loop** (`while (choice.finish_reason === "tool_calls")`)
-When `finish_reason` is `"tool_calls"`:
-- Read the tool name and arguments from the model's response
-- Call `tool.execute(args)` — the same function you ran manually in Step 3
-- Append both the model's tool request *and* the tool result to `groqHistory`
-- Call the model again with the updated context
-- Repeat until `finish_reason === "stop"` or the loop limit is reached
-
-**5. Writing to the UI**
-The orchestrator calls `addMessage()` at each stage — user message, each LLM call, each tool result, and the final answer. The message history panel renders these in order, giving you the full execution trace you saw in Step 6.
-
-That is the complete agent. There is no hidden framework — everything is in those ~200 lines.
+**↳ An agent is just a loop: LLM decides → tool runs → result fed back → LLM answers.**
 
 ---
 
-#### Bonus — Observability with Portkey
+#### Step 8 — Read the Code: Three Files, ~200 Lines Total
 
-Steps 7–9 require a free Portkey account and API key. See **Getting a Portkey API Key** in the Prerequisites section above for setup instructions.
+Open the three files in `src/services/`. Together they are the entire backend of the agent.
 
-**What is Portkey?**
-Portkey is an AI gateway — a proxy that sits between your code and any LLM provider. You point your API calls at Portkey instead of directly at Groq (or OpenAI, Anthropic, etc.), and Portkey forwards them on. Because all traffic flows through it, you get a complete log of every request and response: the full prompt, the model's reply, token counts, latency, cost, and automatic scanning for sensitive data like PII. In production, teams use gateways like Portkey to enforce rate limits, swap models without code changes, and catch data leakage before it leaves the system.
+---
 
-**Step 7 — Connect Portkey to Groq**
-1. Follow the instructions in **Getting a Portkey API Key** above to create a Virtual Key pointing at Groq with the slug `aidaysf`.
-2. Make sure you have both your **Portkey API key** (from the Portkey dashboard) and the virtual key slug ready.
+**[`memory.ts`](src/services/memory.ts) — ~35 lines**
 
-**Step 8 — Enable in the Sandbox**
+A plain in-memory array of `{ user, assistant }` pairs. That's the whole memory system.
+
+```typescript
+const store: MemoryEntry[] = [];
+
+export function addMemoryEntry(user: string, assistant: string) { store.push({ user, assistant }); }
+export function getMemory(): MemoryEntry[]                       { return [...store]; }
+export function clearMemory()                                    { store.length = 0; }
+```
+
+`addMemoryEntry` is called once per completed turn. `getMemory` is called at the start of every `orchestrate()` call to inject previous turns into the prompt. There is no database, no embeddings, no vector search — just an array that grows with each turn and gets concatenated onto the front of every new request.
+
+**↳ "Memory" is four functions and an array.**
+
+---
+
+**[`tools.ts`](src/services/tools.ts) — ~100 lines**
+
+Two things: the mock database, and one tool definition.
+
+The mock database is a plain TypeScript object — four employees, each with a benefits record. In a real system this would be a database call or an internal API. It's an object here so you can read it in 30 seconds and understand precisely what data the agent has access to.
+
+Each tool is an object with two fields:
+
+```typescript
+{
+  inputSchema: { /* JSON Schema — what the LLM reads */ },
+  execute:     async (args) => string  /* what actually runs */
+}
+```
+
+`inputSchema` is sent to the model on every LLM call as part of the `tools` parameter. The model reads the name, description, and parameter spec and decides when to call it and what arguments to pass. It never sees `execute` — that is application code the model has no access to.
+
+`execute` is just a function. It looks up the employee ID in the object, serialises the result as JSON, and returns a string. The orchestrator appends that string to the prompt as a `tool` role message.
+
+To add a new capability to the agent, add a new entry to `allTools` at the bottom of the file — a schema and a function. Nothing else changes.
+
+**↳ A tool is a JSON description plus a function. The model reads one and your code runs the other.**
+
+---
+
+**[`orchestrator.ts`](src/services/orchestrator.ts) — ~150 lines of logic**
+
+The main export is `orchestrate(userQuery, tools)`. Here is what happens when you call it:
+
+**1. Build the prompt.**
+Start with an array of typed `PromptMessage` objects. If there is a system prompt, it goes first. Then every `{ user, assistant }` pair from `memory.ts` is unpacked into two messages. Then the current user query. This array is the entire "brain state" of the agent for this call.
+
+**2. Call the LLM.**
+`toGroqWire()` converts the typed prompt array into the raw `{ role, content }` format Groq expects. The tool schemas from `tools.ts` are appended. One HTTP request goes out. One response comes back.
+
+**3. Check `finish_reason`.**
+The response has a `finish_reason` field. `"stop"` means the model is done — take `choice.message.content` as the final answer, store it in memory, and return. `"tool_calls"` means the model wants more data before answering.
+
+**4. Run the tool (if needed).**
+When `finish_reason === "tool_calls"`: read the tool name and arguments the model chose, find the matching `execute()` function in the tool list, call it, get the JSON string back. Append the model's tool request and the tool result to the prompt as two new messages. Go back to step 2.
+
+**5. Return an `Exchange`.**
+The function returns `{ userQuery, rounds, finalAnswer }`. Each `Round` records the exact prompt that was sent and the response that came back, with tool call details if there was one. The UI renders this directly — no global state, no event bus.
+
+**↳ The orchestrator is a while loop. Everything else is bookkeeping.**
+
+---
+
+#### Step 9 — Setup Portkey (Optional)
+
+Portkey is an AI gateway — a proxy that sits between your code and any LLM provider. Because all traffic flows through it, you get a complete log of every request and response: the full prompt, the model's reply, token counts, latency, cost, and automatic scanning for PII. In production, teams use gateways like Portkey to enforce rate limits, swap models without code changes, and catch data leakage before it leaves the system.
+
+See **Getting a Portkey API Key** in the Prerequisites section above for setup instructions, then:
+
+1. Go to [app.portkey.ai](https://app.portkey.ai), sign in, and navigate to **Virtual Keys → Add Key**.
+2. Select **Groq** as the provider, enter `aidaysf` as the slug, and paste your Groq API key. Save.
+3. Copy your **Portkey API key** from the dashboard home or **API Keys** section.
+
+**↳ Portkey sits between your app and the LLM provider — you only change the URL.**
+
+---
+
+#### Step 10 — Enable Portkey in the App
+
 1. Check the **PORTKEY** checkbox in the sandbox header.
-2. Paste your **Portkey API key** into the field that appears (not your Groq key — Portkey handles that internally via the virtual key).
-3. The checkbox border turns green. All LLM traffic now routes through Portkey instead of hitting Groq directly.
+2. Paste your **Portkey API key** into the field that appears (not your Groq key — Portkey handles that via the virtual key).
+3. All LLM traffic now routes through Portkey instead of hitting Groq directly.
 
-**Step 9 — Observe**
-1. Run the HR Agent query again (Step 6).
+**↳ Zero code changes needed — observability is a deployment decision, not a code one.**
+
+---
+
+#### Step 11 — Observe
+
+1. Run the HR Agent again (Step 7).
 2. Switch to the Portkey dashboard and open the **Logs** tab.
-3. Click on the most recent request. You can see:
-   - The full messages array sent to the model (system prompt, user message, tool result)
-   - The model's raw response including the tool call request
-   - Token counts (prompt tokens, completion tokens, total)
-   - Request latency
-   - Any PII detected — look for the SSN field in the `benefits_lookup` tool result
+3. Click the most recent entry. You can see:
+   - The full messages array sent on each LLM call
+   - The model's tool call request and the tool result injected between the two calls
+   - Token counts, latency, and cost
+   - Any PII flagged — look for the SSN field in the `benefits_lookup` result
 
-**What you learned:** An AI gateway gives you observability and control over every LLM call without touching application code. The orchestrator sends the same request regardless — it is the routing layer that changes. This is how production agent systems handle logging, cost management, and compliance.
+**↳ You can't debug what you can't see — logs are non-negotiable in production agents.**
 
 ### Architecture
 
 ```
 ┌─────────────────────────────────────────┐
-│  MessageComposer  ←→  MessageHistory    │  React UI (Zustand store)
+│  MessageComposer                        │  React UI
+│    → awaits orchestrate()               │
+│  MessageHistory                         │
+│    ← renders Exchange object            │
 └──────────────┬──────────────────────────┘
-               │ orchestrate(userQuery, tools)
+               │ orchestrate(userQuery, tools): Promise<Exchange>
 ┌──────────────▼──────────────────────────┐
 │           orchestrator.ts               │
-│  1. Append user message                 │
-│  2. Call LLM with full history          │
-│  3. finish_reason === "tool_calls"?      │
+│  1. Build prompt: system + memory +     │
+│     user query                          │
+│  2. Call LLM with full prompt           │
+│  3. finish_reason === "tool_calls"?     │
 │     → execute tool → append result      │
 │     → call LLM again                    │
-│  4. finish_reason === "stop" → done     │
+│  4. finish_reason === "stop" → return   │
+│     Exchange { userQuery, rounds,       │
+│                finalAnswer }            │
 └──────────────┬──────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐

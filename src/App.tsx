@@ -152,39 +152,52 @@ export default function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
 
                 <div style={{ borderLeft: '2px solid var(--pkd-primary)', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
-                    <span style={{ color: 'var(--pkd-primary)', fontWeight: 700 }}>1. SYSTEM PROMPT —</span> Select <em>HR CHATBOT</em>. Try on-topic questions (<em>"What is the PTO policy?"</em>) and off-topic ones (<em>"Write me a poem."</em>). Edit the prompt and see how the behaviour changes.
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: '0 0 0.15rem 0' }}>
+                    <span style={{ color: 'var(--pkd-primary)', fontWeight: 700 }}>1. RAW MODEL —</span> Agent mode <strong>OFF</strong>. Send <em>"My name is [your name]."</em> Then send <em>"What is my name?"</em> The model has no memory — each request is stateless. You are talking directly to the LLM.
                   </p>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-primary)', margin: 0, opacity: 0.75 }}>↳ The model is not magic — it only knows what you put in the prompt.</p>
                 </div>
 
                 <div style={{ borderLeft: '2px solid var(--pkd-primary)', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
-                    <span style={{ color: 'var(--pkd-primary)', fontWeight: 700 }}>2. GROUNDING —</span> Switch to <em>BENEFITS DOC</em>. Scroll the prompt to see the policy text injected inline. Ask questions that are in the document, then ask something not covered — notice the difference.
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: '0 0 0.15rem 0' }}>
+                    <span style={{ color: 'var(--pkd-primary)', fontWeight: 700 }}>2. MEMORY —</span> Agent mode <strong>ON</strong>, select <em>CHAT BOT</em>. Repeat the same two messages. It now remembers — the Orchestrator injects previous turns into every prompt automatically. Hit CLEAR to reset memory and try again.
                   </p>
-                </div>
-
-                <div style={{ borderLeft: '2px solid var(--pkd-secondary)', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
-                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>3. TOOLS —</span> Use the Tool Sandbox below. Enter <em>EMP001</em> and click LOOKUP BENEFITS. This is the raw JSON the tool returns — examine the structure.
-                  </p>
-                </div>
-
-                <div style={{ borderLeft: '2px solid var(--pkd-warning)', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
-                    <span style={{ color: 'var(--pkd-warning)', fontWeight: 700 }}>4. ASK WITHOUT TOOLS —</span> Switch back to <em>HR CHATBOT</em> (no tools). Ask: <em>"What are the benefits for EMP001?"</em> The model has no data — observe what it says.
-                  </p>
-                </div>
-
-                <div style={{ borderLeft: '2px solid var(--pkd-warning)', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
-                    <span style={{ color: 'var(--pkd-warning)', fontWeight: 700 }}>5. PASTE THE DATA —</span> Copy the tool output from step 3 and paste it into the chat as a follow-up message. Ask the same question. The model can now answer — this is manual grounding.
-                  </p>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-primary)', margin: 0, opacity: 0.75 }}>↳ "Memory" is just your app re-sending the conversation history every time.</p>
                 </div>
 
                 <div style={{ borderLeft: '2px solid var(--pkd-primary)', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
-                    <span style={{ color: 'var(--pkd-primary)', fontWeight: 700 }}>6. USE THE AGENT —</span> Switch to <em>HR AGENT</em>. Ask the same question. Watch the trace: the Orchestrator calls the tool automatically, injects the result, and re-submits to the LLM — exactly what you did manually in step 5.
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: '0 0 0.15rem 0' }}>
+                    <span style={{ color: 'var(--pkd-primary)', fontWeight: 700 }}>3. SYSTEM PROMPT —</span> Select <em>HR CHATBOT</em>. The system prompt restricts the model to HR topics. Try <em>"What is the PTO policy?"</em> (on-topic), then <em>"Write me a poem."</em> (off-topic). Edit the prompt live and observe how behaviour shifts.
                   </p>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-primary)', margin: 0, opacity: 0.75 }}>↳ The system prompt is your product — it's how you turn a general model into a specific assistant.</p>
+                </div>
+
+                <div style={{ borderLeft: '2px solid var(--pkd-primary)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: '0 0 0.15rem 0' }}>
+                    <span style={{ color: 'var(--pkd-primary)', fontWeight: 700 }}>4. GROUNDING —</span> Select <em>BENEFITS DOC</em>. The full HR policy document is injected into the system prompt. Ask <em>"What is the parental leave policy?"</em> — the model answers from the text. Ask something not in the doc and notice the difference.
+                  </p>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-primary)', margin: 0, opacity: 0.75 }}>↳ LLMs don't need to be fine-tuned on your data — just put it in the prompt.</p>
+                </div>
+
+                <div style={{ borderLeft: '2px solid var(--pkd-warning)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: '0 0 0.15rem 0' }}>
+                    <span style={{ color: 'var(--pkd-warning)', fontWeight: 700 }}>5. TOOL SANDBOX —</span> Use the Tool Sandbox below. Enter <em>EMP001</em> and click LOOKUP BENEFITS. Examine the raw JSON returned — this is live employee data the LLM has no access to on its own.
+                  </p>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-warning)', margin: 0, opacity: 0.85 }}>↳ A tool is just a function that returns data — nothing AI-specific about it.</p>
+                </div>
+
+                <div style={{ borderLeft: '2px solid var(--pkd-warning)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: '0 0 0.15rem 0' }}>
+                    <span style={{ color: 'var(--pkd-warning)', fontWeight: 700 }}>6. MANUAL GROUNDING —</span> Switch to <em>HR CHATBOT</em> (no tools). Ask <em>"What are EMP001's benefits?"</em> — the model can't answer accurately. Now paste the JSON from step 5 into the chat and ask again. It answers perfectly.
+                  </p>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-warning)', margin: 0, opacity: 0.85 }}>↳ You just played the role of the agent — the orchestrator automates exactly this.</p>
+                </div>
+
+                <div style={{ borderLeft: '2px solid var(--pkd-warning)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: '0 0 0.15rem 0' }}>
+                    <span style={{ color: 'var(--pkd-warning)', fontWeight: 700 }}>7. AGENT + TOOLS —</span> Select <em>HR AGENT</em>. Ask <em>"What are the benefits for EMP001?"</em> Watch the trace panel: the Orchestrator detects a tool call, fetches live data, injects the result, then re-submits to the LLM for a final answer. Try EMP002–EMP004.
+                  </p>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-warning)', margin: 0, opacity: 0.85 }}>↳ An agent is just a loop: LLM decides → tool runs → result fed back → LLM answers.</p>
                 </div>
 
                 <div style={{ borderLeft: '2px solid var(--pkd-secondary-border)', paddingLeft: '0.75rem', marginTop: '0.25rem' }}>
@@ -192,21 +205,24 @@ export default function App() {
                 </div>
 
                 <div style={{ borderLeft: '2px solid var(--pkd-secondary)', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
-                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>7. SETUP PORTKEY —</span> Go to <em>app.portkey.ai</em>, sign in, and create a Virtual Key. Select <strong>Groq</strong> as the provider, enter <strong>aidaysf</strong> as the slug, and paste your Groq API key. Copy the Portkey API key shown at the top.
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: '0 0 0.15rem 0' }}>
+                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>8. SETUP PORTKEY —</span> Go to <em>app.portkey.ai</em>, sign in, and create a Virtual Key. Select <strong>Groq</strong> as the provider, enter <strong>aidaysf</strong> as the slug, and paste your Groq API key. Copy the Portkey API key shown at the top.
                   </p>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-secondary)', margin: 0, opacity: 0.75 }}>↳ Portkey sits between your app and the LLM provider — you only change the URL.</p>
                 </div>
 
                 <div style={{ borderLeft: '2px solid var(--pkd-secondary)', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
-                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>8. ENABLE IN UI —</span> Check the <strong>PORTKEY</strong> box in the header and paste your Portkey API key into the field that appears. All LLM traffic now routes through Portkey.
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: '0 0 0.15rem 0' }}>
+                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>9. ENABLE IN UI —</span> Check the <strong>PORTKEY</strong> box in the header and paste your Portkey API key into the field that appears. All LLM traffic now routes through Portkey.
                   </p>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-secondary)', margin: 0, opacity: 0.75 }}>↳ Zero code changes needed — observability is a deployment decision, not a code one.</p>
                 </div>
 
                 <div style={{ borderLeft: '2px solid var(--pkd-secondary)', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
-                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>9. OBSERVE —</span> Run the HR Agent again (step 6). Switch to the Portkey dashboard and inspect the request log — see the full prompt, token counts, latency, and any PII flagged in the tool output (the SSN field).
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: '0 0 0.15rem 0' }}>
+                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>10. OBSERVE —</span> Run the HR Agent again (step 7). Switch to the Portkey dashboard and inspect the request log — see the full prompt, token counts, latency, and the tool result injected between the two LLM calls.
                   </p>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-secondary)', margin: 0, opacity: 0.75 }}>↳ You can't debug what you can't see — logs are non-negotiable in production agents.</p>
                 </div>
 
               </div>
