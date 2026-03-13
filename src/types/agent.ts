@@ -125,6 +125,55 @@ export interface ToolResult {
 }
 
 /**
+ * Source label for every message in the prompt array.
+ * Replaces the old index-position hack for identifying memory vs user vs tool messages.
+ */
+export type PromptMessageSource =
+  | 'system'
+  | 'memory_user'       // injected from conversation memory — user half
+  | 'memory_assistant'  // injected from conversation memory — assistant half
+  | 'user'              // current user query
+  | 'assistant'         // LLM text response (stop finish_reason)
+  | 'tool_call'         // LLM requested a tool (assistant turn with tool_calls)
+  | 'tool_response';    // tool result injected back into context
+
+/**
+ * A single message in the typed prompt representation.
+ * Convert to Groq wire format with toGroqWire() before sending.
+ */
+export type PromptMessage = {
+  source: PromptMessageSource;
+  text: string;
+  toolName?: string;
+  toolCallId?: string;
+  toolInput?: Record<string, unknown>;
+  toolCalls?: any[];   // raw Groq tool_calls array, needed for toGroqWire()
+};
+
+/**
+ * One round of the agent loop: what was compiled and sent, what came back,
+ * and (if a tool was called) the tool result.
+ */
+export interface Round {
+  request: PromptMessage[];
+  finish_reason: 'stop' | 'tool_calls';
+  text: string | null;
+  toolName?: string;
+  toolInput?: Record<string, unknown>;
+  toolResult?: string;
+}
+
+/**
+ * The complete result of one user turn — returned directly by orchestrate()
+ * and sendMessage() rather than being pushed through a store.
+ */
+export interface Exchange {
+  userQuery: string;
+  rounds: Round[];
+  finalAnswer: string;
+}
+
+/**
  * Agent orchestration state
  */
 export interface AgentState {

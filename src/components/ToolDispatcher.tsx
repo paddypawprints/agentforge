@@ -34,27 +34,27 @@ export function ToolDispatcher() {
     catch { return raw; }
   };
 
-  const T = '#dce8d4';
-  const B = '#00e5ff';
+  const T = 'var(--pkd-foreground-muted)';
+  const B = 'var(--pkd-secondary)';
 
   return (
     <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       {error && (
-        <div className="pkd-alert" style={{ color: '#ff4444', borderColor: '#ff4444' }}>
+        <div className="pkd-alert" style={{ color: 'var(--pkd-destructive)', borderColor: 'var(--pkd-destructive)' }}>
           ⚠ {error}
         </div>
       )}
 
       {/* Benefits Lookup */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <div className="pkd-heading pkd-heading-3 pkd-text-secondary" style={{ fontSize: '0.875rem' }}>
+        <div className="pkd-heading pkd-heading-3 pkd-text-secondary" style={{ fontSize: 'var(--pkd-text-sm)' }}>
           ▶ BENEFITS LOOKUP
         </div>
-        <div className="pkd-text-mono" style={{ fontSize: '0.75rem', color: T }}>
+        <div className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: T }}>
           Enter an employee ID to retrieve benefits data. Try: EMP001 – EMP004
         </div>
-        <label className="pkd-text-mono" style={{ fontSize: '0.75rem', color: T }}>
+        <label className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: T }}>
           EMPLOYEE ID
         </label>
         <input
@@ -79,16 +79,16 @@ export function ToolDispatcher() {
           <div style={{
             marginTop: '0.5rem',
             padding: '0.75rem',
-            background: 'rgba(6,182,212,0.08)',
-            border: '1px solid rgba(6,182,212,0.35)',
+            background: 'var(--pkd-secondary-bg)',
+            border: '1px solid var(--pkd-secondary-border)',
             borderRadius: '2px',
           }}>
-            <div className="pkd-text-mono" style={{ fontSize: '0.75rem', color: B, marginBottom: '0.4rem', letterSpacing: '0.08em' }}>
+            <div className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: B, marginBottom: '0.4rem', letterSpacing: '0.08em' }}>
               ↳ RAW TOOL OUTPUT
             </div>
             <pre style={{
               margin: 0,
-              fontSize: '0.875rem',
+              fontSize: 'var(--pkd-text-sm)',
               color: T,
               fontFamily: 'var(--pkd-font-mono)',
               whiteSpace: 'pre-wrap',

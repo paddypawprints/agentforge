@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAgentStore } from "../store/agentStore";
-import { getSystemPrompt } from "../services/orchestrator";
-import { Message } from "../types/agent";
+import { Exchange, PromptMessage } from "../types/agent";
 
 interface ScrollState {
   isAtBottom: boolean;
@@ -137,216 +135,165 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}) {
 }
 
 /**
- * MessageHistory Component
- * Shows the system prompt + only the messages from the last user turn onward.
- * This gives a clean view of one full LLM exchange: what was sent and what came back.
+ * MessageHistory — renders a single Exchange returned by orchestrate() or sendMessage().
+ * No store, no JSON parsing, no position arithmetic — just typed data rendered directly.
  */
-export function MessageHistory() {
-  const { messages } = useAgentStore();
-  const { scrollRef } = useAutoScroll({ offset: 20, smooth: true });
+export function MessageHistory({ exchange, turnCount }: { exchange: Exchange | null; turnCount?: number }) {
+  const { scrollRef } = useAutoScroll({ offset: 20, smooth: true, content: exchange });
 
-  // Slice out only the current exchange (from the last user message onward)
-  const lastUserIdx = (() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'user') return i;
-    }
-    return -1;
-  })();
+  const G   = 'var(--pkd-primary)';
+  const B   = 'var(--pkd-secondary)';
+  const A   = 'var(--pkd-warning)';
+  const M   = 'var(--pkd-accent)';
+  const T   = 'var(--pkd-foreground-muted)';
+  const gBd = 'var(--pkd-primary-border)';
+  const bBd = 'var(--pkd-secondary-border)';
+  const aBd = 'var(--pkd-warning-border)';
+  const mBd = 'var(--pkd-accent-border, #c0392b55)';
+  const gBg = 'var(--pkd-primary-bg)';
+  const aBg = 'var(--pkd-warning-bg)';
 
-  // ─── 4-colour palette + helpers ─────────────────────────────────────────
-  const G   = '#00ff41';               // green  – headings, entity labels
-  const B   = '#00e5ff';               // blue   – tool / structured data
-  const A   = '#ffe600';               // amber  – user / system roles
-  const T   = '#dce8d4';               // text   – all body content
-  const gBd = 'rgba(0,255,65,0.35)';
-  const bBd = 'rgba(0,229,255,0.30)';
-  const aBd = 'rgba(255,230,0,0.40)';
-  const gBg = 'rgba(0,255,65,0.05)';
-  const bBg = 'rgba(0,229,255,0.06)';
-  const aBg = 'rgba(255,230,0,0.08)';
-  // ─────────────────────────────────────────────────────────────────────────
+  const label = (color: string) => ({ fontSize: 'var(--pkd-text-xs)' as const, color, letterSpacing: '0.08em' });
+  const body  = (color: string) => ({ fontSize: 'var(--pkd-text-sm)' as const, color, margin: 0 as const, whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const });
+  const box   = (bg: string, bd: string) => ({ padding: '0.65rem 0.9rem', background: bg, border: `1px solid ${bd}`, borderRadius: '2px' });
 
-  const currentTurn: Message[] = lastUserIdx >= 0 ? messages.slice(lastUserIdx) : [];
-  const systemPrompt = getSystemPrompt();
-  const turnCount = messages.filter((m) => m.role === 'user').length;
-
-  if (messages.length === 0) {
+  if (!exchange) {
     return (
       <div ref={scrollRef} style={{ minHeight: '12rem', overflowY: 'auto', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p className="pkd-text-mono text-center" style={{ fontSize: '0.875rem', color: A }}>
-          [ NO MESSAGES ] — Type a message below and press SEND to start the conversation.
+        <p className="pkd-text-mono text-center" style={{ fontSize: 'var(--pkd-text-sm)', color: A }}>
+          [ NO MESSAGES ] — Type a message below and press SEND to start.
         </p>
       </div>
     );
   }
 
-  // ─── shared style helpers ────────────────────────────────────────────────
-  const label = (color: string) => ({ fontSize: '0.75rem' as const, color, letterSpacing: '0.08em' });
-  const body  = (color: string) => ({ fontSize: '0.875rem' as const, color, margin: 0 as const, whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const });
-  const box   = (bg: string, bd: string) => ({ padding: '0.5rem 0.75rem', background: bg, border: `1px solid ${bd}`, borderRadius: '2px' });
-  // ─────────────────────────────────────────────────────────────────────────
+  // Render a single PromptMessage from the REQUEST section, colour-coded by source
+  const renderPromptMsg = (msg: PromptMessage, i: number) => {
+    switch (msg.source) {
+      case 'system':
+        return (
+          <div key={i} style={{ borderLeft: `2px solid ${aBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+            <span className="pkd-text-mono" style={{ ...label(A), fontWeight: 700 }}>SYSTEM PROMPT</span>
+            <pre className="pkd-text-mono" style={{ ...body(T), maxHeight: '5rem', overflowY: 'auto' }}>{msg.text}</pre>
+          </div>
+        );
+      case 'memory_user':
+        return (
+          <div key={i} style={{ borderLeft: `2px solid ${mBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+            <span className="pkd-text-mono" style={{ ...label(M), fontWeight: 700 }}>MEMORY · USER</span>
+            <pre className="pkd-text-mono" style={body(T)}>{msg.text}</pre>
+          </div>
+        );
+      case 'memory_assistant':
+        return (
+          <div key={i} style={{ borderLeft: `2px solid ${mBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+            <span className="pkd-text-mono" style={{ ...label(M), fontWeight: 700 }}>MEMORY · ASSISTANT</span>
+            <pre className="pkd-text-mono" style={body(T)}>{msg.text}</pre>
+          </div>
+        );
+      case 'user':
+        return (
+          <div key={i} style={{ borderLeft: `2px solid ${aBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+            <span className="pkd-text-mono" style={{ ...label(A), fontWeight: 700 }}>USER</span>
+            <pre className="pkd-text-mono" style={body(T)}>{msg.text}</pre>
+          </div>
+        );
+      case 'tool_call': {
+        let args = '';
+        try { args = JSON.stringify(msg.toolInput, null, 2); } catch { args = String(msg.toolInput); }
+        return (
+          <div key={i} style={{ borderLeft: `2px solid ${bBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+            <span className="pkd-text-mono" style={{ ...label(B), fontWeight: 700 }}>TOOL CALL</span>
+            <pre className="pkd-text-mono" style={{ ...body(B) }}>{msg.toolName}({args})</pre>
+          </div>
+        );
+      }
+      case 'tool_response': {
+        const pretty = (() => { try { return JSON.stringify(JSON.parse(msg.text), null, 2); } catch { return msg.text; } })();
+        return (
+          <div key={i} style={{ borderLeft: `2px solid ${bBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+            <span className="pkd-text-mono" style={{ ...label(B), fontWeight: 700 }}>TOOL RESULT</span>
+            <pre className="pkd-text-mono" style={{ ...body(B), maxHeight: '5rem', overflowY: 'auto' }}>{pretty}</pre>
+          </div>
+        );
+      }
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div ref={scrollRef} style={{ maxHeight: '36rem', overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+    <div ref={scrollRef} style={{ height: '100%', overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
 
       {/* Turn counter */}
-      {turnCount > 1 && (
+      {turnCount && turnCount > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingBottom: '0.25rem' }}>
           <div style={{ flex: 1, height: '1px', background: aBd }} />
-          <span className="pkd-text-mono" style={{ ...label(A), whiteSpace: 'nowrap' }}>
-            SHOWING TURN {turnCount} OF {turnCount}
-          </span>
+          <span className="pkd-text-mono" style={{ ...label(A), whiteSpace: 'nowrap' }}>TURN {turnCount}</span>
           <div style={{ flex: 1, height: '1px', background: aBd }} />
         </div>
       )}
 
-      {/* System prompt block */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-        <span className="pkd-text-mono" style={label(A)}>⬡ SYSTEM</span>
-        <div style={{ ...box(aBg, aBd), padding: '0.65rem 0.9rem' }}>
-          <pre className="pkd-text-mono" style={{ ...body(T), maxHeight: '7rem', overflowY: 'auto' }}>{systemPrompt}</pre>
+      {/* USER bubble */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-end' }}>
+        <span className="pkd-text-mono" style={label(A)}>USER</span>
+        <div style={{ maxWidth: '85%', ...box(aBg, aBd) }}>
+          <p className="pkd-text-mono" style={body(T)}>{exchange.userQuery}</p>
         </div>
       </div>
 
-      {currentTurn.map((message: Message) => {
+      {/* One card per LLM round */}
+      {exchange.rounds.map((round, roundIdx) => (
+        <div key={roundIdx} style={{ border: `1px solid ${gBd}`, borderRadius: '4px' }}>
 
-        /* ── STATUS messages ─────────────────────────────────────────── */
-        if (message.role === 'status') {
-          let parsed: any = null;
-          try { parsed = JSON.parse(message.content); } catch {}
-
-          /* Orchestrator: sending to LLM */
-          if (parsed?.type === 'llm_call') {
-            const callLabel = parsed.callNum === 1 ? 'sending to LLM' : `sending to LLM (call #${parsed.callNum})`;
-            const ctxMsgs: any[] = parsed.contextMessages || [];
-            return (
-              <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', borderLeft: `2px solid ${gBd}`, paddingLeft: '0.75rem' }}>
-                <span className="pkd-text-mono" style={label(G)}>
-                  <span style={{ opacity: 0.55 }}>Orchestrator:</span> {callLabel}
-                </span>
-                <div style={{ ...box(gBg, gBd), display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                  <span className="pkd-text-mono" style={label(G)}>{ctxMsgs.length + 1} messages in context</span>
-                  {/* System — always first */}
-                  <pre title="SYSTEM" className="pkd-text-mono" style={{ ...body(T), maxHeight: '4rem', overflowY: 'auto', cursor: 'default' }}>{systemPrompt}</pre>
-                  {ctxMsgs.map((msg: any, i: number) => {
-                    if (msg.role === 'user') return (
-                      <pre key={i} title="USER" className="pkd-text-mono" style={{ ...body(T), cursor: 'default' }}>{msg.content}</pre>
-                    );
-                    if (msg.role === 'assistant') {
-                      const tc = msg.tool_calls?.[0];
-                      let toolStr = '';
-                      if (tc) { try { toolStr = `${tc.function.name}(${JSON.stringify(JSON.parse(tc.function.arguments), null, 2)})`; } catch { toolStr = `${tc.function.name}(${tc.function.arguments})`; } }
-                      return (
-                        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                          {msg.content && <pre title="LLM (prior turn)" className="pkd-text-mono" style={{ ...body(T), cursor: 'default' }}>{msg.content}</pre>}
-                          {tc && <pre title="LLM tool call" className="pkd-text-mono" style={{ ...body(B), cursor: 'default' }}>→ {toolStr}</pre>}
-                        </div>
-                      );
-                    }
-                    if (msg.role === 'tool') {
-                      const pretty = (() => { try { return JSON.stringify(JSON.parse(msg.content), null, 2); } catch { return msg.content; } })();
-                      return <pre key={i} title="TOOL RESULT" className="pkd-text-mono" style={{ ...body(B), cursor: 'default', maxHeight: '4rem', overflowY: 'auto' }}>{pretty}</pre>;
-                    }
-                    return null;
-                  })}
-                </div>
-              </div>
-            );
-          }
-
-          /* LLM response + Orchestrator decision */
-          if (parsed?.type === 'llm_response') {
-            const isToolCall = parsed.finish_reason === 'tool_calls';
-            const inputStr = isToolCall ? (() => { try { return JSON.stringify(parsed.tool_input, null, 2); } catch { return String(parsed.tool_input); } })() : null;
-            return (
-              <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {/* LLM block */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', borderLeft: `2px solid ${gBd}`, paddingLeft: '0.75rem' }}>
-                  <span className="pkd-text-mono" style={label(G)}>
-                    <span style={{ opacity: 0.55 }}>LLM:</span> response received
-                  </span>
-                  <div style={{ ...box(gBg, gBd), display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                    <span className="pkd-text-mono" style={label(G)}>
-                      finish_reason: <span style={{ color: isToolCall ? A : G, fontWeight: 600 }}>{parsed.finish_reason}</span>
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                      <span className="pkd-text-mono" style={label(G)}>TEXT CONTENT</span>
-                      <pre className="pkd-text-mono" style={body(T)}>{parsed.responseContent || '(none)'}</pre>
-                    </div>
-                    {isToolCall && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                        <span className="pkd-text-mono" style={label(A)}>TOOL CALL — structured output, separate from text</span>
-                        <pre className="pkd-text-mono" style={body(B)}>{parsed.tool_name}({inputStr})</pre>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {/* Orchestrator block */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', borderLeft: `2px solid ${gBd}`, paddingLeft: '0.75rem' }}>
-                  <span className="pkd-text-mono" style={label(G)}>
-                    <span style={{ opacity: 0.55 }}>Orchestrator:</span> processing LLM response
-                  </span>
-                  <div style={box(gBg, gBd)}>
-                    {isToolCall ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                        <span className="pkd-text-mono" style={{ ...label(G), fontWeight: 600 }}>
-                          Decision: call tool <span style={{ color: B }}>{parsed.tool_name}</span>
-                        </span>
-                        <pre className="pkd-text-mono" style={body(T)}>{inputStr}</pre>
-                      </div>
-                    ) : (
-                      <span className="pkd-text-mono" style={{ ...label(G), fontWeight: 600 }}>Decision: yield to UI</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
-          /* Fallback */
-          return (
-            <div key={message.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-              <div style={{ flex: 1, height: '1px', background: gBd }} />
-              <span className="pkd-text-mono" style={{ ...label(G), whiteSpace: 'nowrap' }}>{message.content}</span>
-              <div style={{ flex: 1, height: '1px', background: gBd }} />
-            </div>
-          );
-        }
-
-        /* ── USER message ─────────────────────────────────────────────── */
-        if (message.role === 'user') return (
-          <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-end' }}>
-            <span className="pkd-text-mono" style={label(A)}>USER</span>
-            <div style={{ maxWidth: '85%', ...box(aBg, aBd), padding: '0.65rem 0.9rem' }}>
-              <p className="pkd-text-mono" style={body(T)}>{message.content}</p>
-            </div>
+          {/* Card header */}
+          <div style={{ padding: '0.35rem 0.75rem', background: gBg, borderBottom: `1px solid ${gBd}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span className="pkd-text-mono" style={{ ...label(G), fontWeight: 700, letterSpacing: '0.1em' }}>
+              LLM CALL {exchange.rounds.length > 1 ? `${roundIdx + 1} OF ${exchange.rounds.length}` : ''}
+            </span>
+            <span className="pkd-text-mono" style={{ ...label(G), opacity: 0.6 }}>
+              {round.request.length} message{round.request.length !== 1 ? 's' : ''}
+            </span>
           </div>
-        );
 
-        /* ── TOOL result ──────────────────────────────────────────────── */
-        if (message.role === 'tool') {
-          const pretty = (() => { try { return JSON.stringify(JSON.parse(message.content), null, 2); } catch { return message.content; } })();
-          return (
-            <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <span className="pkd-text-mono" style={label(B)}>→ TOOL RESULT INJECTED</span>
-              <div style={{ ...box(bBg, bBd), padding: '0.65rem 0.9rem' }}>
-                <pre className="pkd-text-mono" style={body(B)}>{pretty}</pre>
-              </div>
-            </div>
-          );
-        }
-
-        /* ── ASSISTANT final response ─────────────────────────────────── */
-        return (
-          <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span className="pkd-text-mono" style={label(G)}>✓ ASSISTANT</span>
-            <div style={{ ...box(gBg, gBd), padding: '0.65rem 0.9rem' }}>
-              <p className="pkd-text-mono" style={body(T)}>{message.content}</p>
-            </div>
+          {/* REQUEST */}
+          <div style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${gBd}`, display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '14rem', overflowY: 'auto' }}>
+            <span className="pkd-text-mono" style={{ ...label(G), opacity: 0.55 }}>REQUEST</span>
+            {round.request.map((msg, i) => renderPromptMsg(msg, i))}
           </div>
-        );
 
-      })}
+          {/* RESPONSE */}
+          <div style={{ padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', minHeight: '4rem', maxHeight: '14rem', overflowY: 'auto' }}>
+            <span className="pkd-text-mono" style={{ ...label(G), opacity: 0.55 }}>
+              RESPONSE · finish_reason: <span style={{ color: round.finish_reason === 'tool_calls' ? A : G, fontWeight: 700 }}>{round.finish_reason}</span>
+            </span>
+            {round.text && (
+              <div style={{ borderLeft: `2px solid ${gBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                <span className="pkd-text-mono" style={{ ...label(G), fontWeight: 700 }}>TEXT</span>
+                <pre className="pkd-text-mono" style={body(T)}>{round.text}</pre>
+              </div>
+            )}
+            {round.finish_reason === 'tool_calls' && round.toolName && (
+              <div style={{ borderLeft: `2px solid ${bBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                <span className="pkd-text-mono" style={{ ...label(B), fontWeight: 700 }}>TOOL CALL REQUEST</span>
+                <pre className="pkd-text-mono" style={body(B)}>
+                  {round.toolName}({(() => { try { return JSON.stringify(round.toolInput, null, 2); } catch { return String(round.toolInput); } })()})
+                </pre>
+              </div>
+            )}
+            {round.toolResult && (
+              <div style={{ borderLeft: `2px solid ${bBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                <span className="pkd-text-mono" style={{ ...label(B), fontWeight: 700 }}>TOOL RESULT</span>
+                <pre className="pkd-text-mono" style={{ ...body(B), maxHeight: '5rem', overflowY: 'auto' }}>
+                  {(() => { try { return JSON.stringify(JSON.parse(round.toolResult!), null, 2); } catch { return round.toolResult; } })()}
+                </pre>
+              </div>
+            )}
+          </div>
+
+        </div>
+      ))}
+
     </div>
   );
 }

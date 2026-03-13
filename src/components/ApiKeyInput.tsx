@@ -66,7 +66,7 @@ export function ApiKeyInput({ variant = 'default' }: ApiKeyInputProps) {
     return (
       <div className="flex items-center gap-2 flex-wrap">
         <label className="flex items-center gap-1.5">
-          <span className="pkd-text-mono" style={{ fontSize: '0.75rem', color: '#dce8d4', whiteSpace: 'nowrap' }}>GROQ KEY</span>
+          <span className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-foreground-muted)', whiteSpace: 'nowrap' }}>GROQ KEY</span>
           <input
             type="password"
             value={key}

@@ -8,6 +8,7 @@ import { MessageComposer } from './components/MessageComposer';
 import { ArchitectureDiagram } from './components/ArchitectureDiagram';
 import { RotateCcw } from 'lucide-react';
 import { setPortkeyApiKey, isPortkeyActive, setTemperature } from './services/orchestrator';
+import { clearMemory } from './services/memory';
 import { ApiKeyInput } from './components/ApiKeyInput';
 import { SystemPromptEditor } from './components/SystemPromptEditor';
 import { benefitsLookupTool } from './services/tools';
@@ -20,6 +21,8 @@ export default function App() {
   const [portkeyEnabled, setPortkeyEnabled] = useState(false);
   const [portkeyKey, setPortkeyKey] = useState('');
   const [temperature, setTemperatureState] = useState(1.0);
+  const [agentMode, setAgentMode] = useState(true);
+  const [activePreset, setActivePreset] = useState<string | null>('chatbot');
 
   useEffect(() => {
     console.log('App mounted. Tools:', agentTools.map((t) => t.name));
@@ -37,16 +40,16 @@ export default function App() {
 
   return (
     <div className="pkd-scan-lines min-h-screen" style={{ backgroundColor: 'var(--pkd-background)' }}>
-      {/* HEADER - Neo PKD Style */}
+      {/* HEADER */}
       <header className="pkd-border-bottom" style={{ borderColor: 'var(--pkd-border-color)' }}>
         <div style={{ width: '100%', padding: '1rem 1.5rem', boxSizing: 'border-box' }}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <h1 className="pkd-heading pkd-heading-2 pkd-text-primary truncate">
-                ⚠️ AGENT ORCHESTRATION NEXUS
+                AI AGENTS
               </h1>
               <p className="pkd-text-mono mt-1 text-xs" style={{ color: 'var(--pkd-foreground-muted)' }}>
-                [ AI AGENTS WORKSHOP ] STATE &amp; ORCHESTRATION
+                State &amp; Orchestration
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -91,7 +94,7 @@ export default function App() {
               </label>
               <ApiKeyInput variant="pkd" />
               <button
-                onClick={clearMessages}
+                onClick={() => { clearMessages(); clearMemory(); }}
                 className="pkd-button pkd-button-secondary text-xs"
                 title="Clear all messages and reset the session"
               >
@@ -115,66 +118,66 @@ export default function App() {
                 ⚡ WORKSHOP EXERCISE
               </h2>
               {/* Architecture diagram */}
-              <div style={{ marginBottom: '1.25rem', padding: '0.75rem', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(0,255,65,0.12)', borderRadius: '2px' }}>
+              <div style={{ marginBottom: '1.25rem', padding: '0.75rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--pkd-primary-border)', borderRadius: '2px' }}>
                 <ArchitectureDiagram />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
 
-                <div style={{ borderLeft: '2px solid #00ff41', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: '0.875rem', color: '#dce8d4', margin: 0 }}>
-                    <span style={{ color: '#00ff41', fontWeight: 700 }}>1. SYSTEM PROMPT —</span> Select <em>HR CHATBOT</em>. Try on-topic questions (<em>"What is the PTO policy?"</em>) and off-topic ones (<em>"Write me a poem."</em>). Edit the prompt and see how the behaviour changes.
+                <div style={{ borderLeft: '2px solid var(--pkd-primary)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
+                    <span style={{ color: 'var(--pkd-primary)', fontWeight: 700 }}>1. SYSTEM PROMPT —</span> Select <em>HR CHATBOT</em>. Try on-topic questions (<em>"What is the PTO policy?"</em>) and off-topic ones (<em>"Write me a poem."</em>). Edit the prompt and see how the behaviour changes.
                   </p>
                 </div>
 
-                <div style={{ borderLeft: '2px solid #00ff41', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: '0.875rem', color: '#dce8d4', margin: 0 }}>
-                    <span style={{ color: '#00ff41', fontWeight: 700 }}>2. GROUNDING —</span> Switch to <em>BENEFITS DOC</em>. Scroll the prompt to see the policy text injected inline. Ask questions that are in the document, then ask something not covered — notice the difference.
+                <div style={{ borderLeft: '2px solid var(--pkd-primary)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
+                    <span style={{ color: 'var(--pkd-primary)', fontWeight: 700 }}>2. GROUNDING —</span> Switch to <em>BENEFITS DOC</em>. Scroll the prompt to see the policy text injected inline. Ask questions that are in the document, then ask something not covered — notice the difference.
                   </p>
                 </div>
 
-                <div style={{ borderLeft: '2px solid #00e5ff', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: '0.875rem', color: '#dce8d4', margin: 0 }}>
-                    <span style={{ color: '#00e5ff', fontWeight: 700 }}>3. TOOLS —</span> Use the Tool Sandbox below. Enter <em>EMP001</em> and click LOOKUP BENEFITS. This is the raw JSON the tool returns — examine the structure.
+                <div style={{ borderLeft: '2px solid var(--pkd-secondary)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
+                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>3. TOOLS —</span> Use the Tool Sandbox below. Enter <em>EMP001</em> and click LOOKUP BENEFITS. This is the raw JSON the tool returns — examine the structure.
                   </p>
                 </div>
 
-                <div style={{ borderLeft: '2px solid #ffe600', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: '0.875rem', color: '#dce8d4', margin: 0 }}>
-                    <span style={{ color: '#ffe600', fontWeight: 700 }}>4. ASK WITHOUT TOOLS —</span> Switch back to <em>HR CHATBOT</em> (no tools). Ask: <em>"What are the benefits for EMP001?"</em> The model has no data — observe what it says.
+                <div style={{ borderLeft: '2px solid var(--pkd-warning)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
+                    <span style={{ color: 'var(--pkd-warning)', fontWeight: 700 }}>4. ASK WITHOUT TOOLS —</span> Switch back to <em>HR CHATBOT</em> (no tools). Ask: <em>"What are the benefits for EMP001?"</em> The model has no data — observe what it says.
                   </p>
                 </div>
 
-                <div style={{ borderLeft: '2px solid #ffe600', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: '0.875rem', color: '#dce8d4', margin: 0 }}>
-                    <span style={{ color: '#ffe600', fontWeight: 700 }}>5. PASTE THE DATA —</span> Copy the tool output from step 3 and paste it into the chat as a follow-up message. Ask the same question. The model can now answer — this is manual grounding.
+                <div style={{ borderLeft: '2px solid var(--pkd-warning)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
+                    <span style={{ color: 'var(--pkd-warning)', fontWeight: 700 }}>5. PASTE THE DATA —</span> Copy the tool output from step 3 and paste it into the chat as a follow-up message. Ask the same question. The model can now answer — this is manual grounding.
                   </p>
                 </div>
 
-                <div style={{ borderLeft: '2px solid #00ff41', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: '0.875rem', color: '#dce8d4', margin: 0 }}>
-                    <span style={{ color: '#00ff41', fontWeight: 700 }}>6. USE THE AGENT —</span> Switch to <em>HR AGENT</em>. Ask the same question. Watch the trace: the Orchestrator calls the tool automatically, injects the result, and re-submits to the LLM — exactly what you did manually in step 5.
+                <div style={{ borderLeft: '2px solid var(--pkd-primary)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
+                    <span style={{ color: 'var(--pkd-primary)', fontWeight: 700 }}>6. USE THE AGENT —</span> Switch to <em>HR AGENT</em>. Ask the same question. Watch the trace: the Orchestrator calls the tool automatically, injects the result, and re-submits to the LLM — exactly what you did manually in step 5.
                   </p>
                 </div>
 
-                <div style={{ borderLeft: '2px solid rgba(0,229,255,0.4)', paddingLeft: '0.75rem', marginTop: '0.25rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: '0.75rem', color: '#00e5ff', margin: '0 0 0.4rem 0', letterSpacing: '0.08em' }}>BONUS: OBSERVABILITY WITH PORTKEY</p>
+                <div style={{ borderLeft: '2px solid var(--pkd-secondary-border)', paddingLeft: '0.75rem', marginTop: '0.25rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-xs)', color: 'var(--pkd-secondary)', margin: '0 0 0.4rem 0', letterSpacing: '0.08em' }}>BONUS: OBSERVABILITY WITH PORTKEY</p>
                 </div>
 
-                <div style={{ borderLeft: '2px solid #00e5ff', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: '0.875rem', color: '#dce8d4', margin: 0 }}>
-                    <span style={{ color: '#00e5ff', fontWeight: 700 }}>7. SETUP PORTKEY —</span> Go to <em>app.portkey.ai</em>, sign in, and create a Virtual Key. Select <strong>Groq</strong> as the provider, enter <strong>aidaysf</strong> as the slug, and paste your Groq API key. Copy the Portkey API key shown at the top.
+                <div style={{ borderLeft: '2px solid var(--pkd-secondary)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
+                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>7. SETUP PORTKEY —</span> Go to <em>app.portkey.ai</em>, sign in, and create a Virtual Key. Select <strong>Groq</strong> as the provider, enter <strong>aidaysf</strong> as the slug, and paste your Groq API key. Copy the Portkey API key shown at the top.
                   </p>
                 </div>
 
-                <div style={{ borderLeft: '2px solid #00e5ff', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: '0.875rem', color: '#dce8d4', margin: 0 }}>
-                    <span style={{ color: '#00e5ff', fontWeight: 700 }}>8. ENABLE IN UI —</span> Check the <strong>PORTKEY</strong> box in the header and paste your Portkey API key into the field that appears. All LLM traffic now routes through Portkey.
+                <div style={{ borderLeft: '2px solid var(--pkd-secondary)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
+                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>8. ENABLE IN UI —</span> Check the <strong>PORTKEY</strong> box in the header and paste your Portkey API key into the field that appears. All LLM traffic now routes through Portkey.
                   </p>
                 </div>
 
-                <div style={{ borderLeft: '2px solid #00e5ff', paddingLeft: '0.75rem' }}>
-                  <p className="pkd-text-mono" style={{ fontSize: '0.875rem', color: '#dce8d4', margin: 0 }}>
-                    <span style={{ color: '#00e5ff', fontWeight: 700 }}>9. OBSERVE —</span> Run the HR Agent again (step 6). Switch to the Portkey dashboard and inspect the request log — see the full prompt, token counts, latency, and any PII flagged in the tool output (the SSN field).
+                <div style={{ borderLeft: '2px solid var(--pkd-secondary)', paddingLeft: '0.75rem' }}>
+                  <p className="pkd-text-mono" style={{ fontSize: 'var(--pkd-text-sm)', color: 'var(--pkd-foreground-muted)', margin: 0 }}>
+                    <span style={{ color: 'var(--pkd-secondary)', fontWeight: 700 }}>9. OBSERVE —</span> Run the HR Agent again (step 6). Switch to the Portkey dashboard and inspect the request log — see the full prompt, token counts, latency, and any PII flagged in the tool output (the SSN field).
                   </p>
                 </div>
 
@@ -200,18 +203,45 @@ export default function App() {
 
           {/* RIGHT COLUMN: System Prompt + Message Composer + Message History */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            {/* SYSTEM PROMPT EDITOR */}
-            <SystemPromptEditor variant="pkd" />
+            {/* AGENT MODE TOGGLE + SYSTEM PROMPT */}
+            <div>
+              <label
+                className="flex items-center gap-2 pkd-text-mono"
+                style={{
+                  fontSize: 'var(--pkd-text-sm)',
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  color: agentMode ? 'var(--pkd-primary)' : 'var(--pkd-foreground-muted)',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  marginBottom: agentMode ? '0.75rem' : 0,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={agentMode}
+                  onChange={(e) => setAgentMode(e.target.checked)}
+                  style={{ accentColor: 'var(--pkd-primary)', width: '1rem', height: '1rem', cursor: 'pointer' }}
+                />
+                AGENT MODE
+                {!agentMode && (
+                  <span style={{ fontWeight: 400, color: 'var(--pkd-foreground-muted)', marginLeft: '0.5rem' }}>
+                    — direct LLM, no system prompt, no tools, no memory
+                  </span>
+                )}
+              </label>
+              {agentMode && <SystemPromptEditor variant="pkd" onPresetChange={setActivePreset} />}
+            </div>
 
             {/* MESSAGE COMPOSER */}
             <div>
               <div className="pkd-heading pkd-heading-3 pkd-text-accent mb-4 flex items-center gap-2">
                 <span className="inline-block w-3 h-3 bg-current animate-pulse"></span>
-                SEND MESSAGE TO AGENT
+                {agentMode ? 'SEND MESSAGE TO AGENT' : 'SEND MESSAGE TO LLM'}
               </div>
               <div className="pkd-card">
                 <div style={{ padding: '1.25rem' }}>
-                  <MessageComposer tools={agentTools} />
+                  <MessageComposer tools={activePreset === 'agent' ? agentTools : []} agentMode={agentMode} />
                 </div>
               </div>
             </div>
@@ -236,14 +266,14 @@ export default function App() {
         {/* FOOTER - System Status */}
         <div className="pkd-alert mt-8 pkd-text-mono text-center text-xs">
           <p style={{ color: 'var(--pkd-foreground)' }}>
-            <span className="pkd-text-primary">[ SYSTEM STATUS ]</span> Left: Tool Sandbox (direct invocation, result inline only). Right: Agent chat (LLM-driven, agentic loop visible). Tools: <strong>benefits_lookup</strong>
+            <span className="pkd-text-primary">System Status:</span> Left: Tool Sandbox (direct invocation, result inline only). Right: Agent chat (LLM-driven, agentic loop visible). Tools: <strong>benefits_lookup</strong>
           </p>
         </div>
 
         {/* GRID REFERENCE + PRE.DEV BADGE */}
         <div className="mt-12 pt-8 pkd-border-top flex items-center justify-between" style={{ borderColor: 'var(--pkd-border-color)' }}>
           <p className="pkd-text-mono text-xs" style={{ color: 'var(--pkd-foreground-muted)' }}>
-            Neo Philip K Dick Paranoid Future Design System v1.0 | Grid: 8px | Surveillance Active
+            Alpine Spring Design System | AI Agents Workshop
           </p>
           <a href="https://pre.dev" target="_blank" rel="noopener noreferrer">
             <img

@@ -12,9 +12,9 @@
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 
-import { useAgentStore } from "../store/agentStore";
-import { Tool } from "../types/agent";
+import { Tool, PromptMessage, Round, Exchange } from "../types/agent";
 import BENEFITS_DOC from "../data/Employee Benefits 2026.md?raw";
+import { addMemoryEntry, getMemory } from "./memory";
 
 // Initialize Groq client (lazy loaded to avoid issues with missing API key at startup)
 let groq: any = null;
@@ -218,184 +218,137 @@ async function callGroqAPI(
   return response.choices[0];
 }
 
+/**
+ * Convert a PromptMessage[] to the Groq wire format (raw role/content objects).
+ * This is the only place where PromptMessage is translated — all other code
+ * works with the higher-level typed representation.
+ */
+function toGroqWire(msgs: PromptMessage[]): any[] {
+  return msgs.map(m => {
+    switch (m.source) {
+      case 'system':           return { role: 'system', content: m.text };
+      case 'memory_user':      return { role: 'user', content: m.text };
+      case 'memory_assistant': return { role: 'assistant', content: m.text };
+      case 'user':             return { role: 'user', content: m.text };
+      case 'assistant':        return { role: 'assistant', content: m.text };
+      case 'tool_call':        return { role: 'assistant', content: m.text || null, tool_calls: m.toolCalls };
+      case 'tool_response':    return { role: 'tool', tool_call_id: m.toolCallId, content: m.text };
+    }
+  });
+}
+
 /* ═══════════════════════════════════════════════════════════════════
  * EXERCISE STEPS 4, 5, 6 — THE ORCHESTRATION ENTRY POINT
  *
- * `orchestrate()` is called by the UI (MessageComposer) on every
- * user message.  It runs the full agent loop:
+ * `orchestrate()` runs the full agent loop and returns an Exchange
+ * describing every round: what was compiled and sent, what came back,
+ * and any tool calls with their results.
  *
- *   1. Build groqHistory (system prompt + user message)
- *   2. Call the LLM via callGroqAPI()
- *   3. If finish_reason === "tool_calls"  →  run the tool  →  loop
- *   4. If finish_reason === "stop"        →  write final answer to UI
- *
- * The UI also receives "status" messages at each step so the
- * MessageHistory panel can display the complete execution trace.
+ * No event bus, no store writes — just an async function that returns
+ * a value.  The component awaits it and renders the result.
  * ═══════════════════════════════════════════════════════════════════ */
 export async function orchestrate(
   userQuery: string,
   tools: Tool[],
   gatewayUrl?: string
-) {
-  const { addMessage, setLoading } = useAgentStore.getState();
-
-  setLoading(true);
-
-  // ── STEP 4A: BUILD THE MESSAGES ARRAY ──────────────────────────────────
-  // groqHistory is the list of messages we send to the LLM on every call.
-  // It always starts with the system prompt + the user's question.
-  // As the loop runs, tool calls and tool results are appended here so the
-  // LLM has full context when we call it again.
-  // This is what the "Orchestrator: sending to LLM" trace card displays.
-  // Local Groq-format history — never includes 'status' messages
-  const groqHistory: any[] = [
-    { role: "system", content: runtimeSystemPrompt },
-    { role: "user", content: userQuery },
+): Promise<Exchange> {
+  // ── BUILD THE INITIAL PROMPT ────────────────────────────────────────────
+  // System prompt (if set) + memory turns + user query, each tagged with a
+  // source label so the trace UI can colour-code without index arithmetic.
+  const memory = getMemory();
+  const prompt: PromptMessage[] = [
+    ...(runtimeSystemPrompt ? [{ source: 'system' as const, text: runtimeSystemPrompt }] : []),
+    ...memory.flatMap(m => [
+      { source: 'memory_user' as const, text: m.user },
+      { source: 'memory_assistant' as const, text: m.assistant },
+    ]),
+    { source: 'user' as const, text: userQuery },
   ];
 
-  try {
-    console.log(`[Orchestrator] Starting orchestration for query: "${userQuery}"`);
+  const rounds: Round[] = [];
 
-    // Add user message to UI
-    addMessage({ role: "user", content: userQuery, timestamp: new Date() });
+  // ── AGENT LOOP ──────────────────────────────────────────────────────────
+  // Snapshot the current prompt, call the LLM, record the round.
+  // If finish_reason === "tool_calls": run the tool, extend the prompt, loop.
+  // If finish_reason === "stop": record final round and return.
+  let loopCount = 0;
+  while (loopCount <= 5) {
+    const requestSnapshot: PromptMessage[] = [...prompt];
+    console.log(`[Orchestrator] LLM call ${loopCount + 1}, prompt length: ${prompt.length}`);
 
-    // ── STEP 4B: FIRST LLM CALL ────────────────────────────────────────────
-    // Emit a "status" event so the trace panel shows the outgoing messages,
-    // then call the LLM.  Watch MessageHistory to see this happen in real time.
-    // Status: first LLM call — include the messages being sent
-    addMessage({ role: "status", content: JSON.stringify({ type: "llm_call", callNum: 1, contextMessages: groqHistory.slice(1) }), timestamp: new Date() });
+    const choice = await callGroqAPI(toGroqWire(prompt), tools, gatewayUrl);
+    console.log(`[Orchestrator] finish_reason=${choice.finish_reason}`);
 
-    let choice = await callGroqAPI(groqHistory, tools, gatewayUrl);
-
-    console.log(`[Orchestrator] finish_reason=${choice.finish_reason}, tool_calls=${(choice.message.tool_calls || []).length}`);
-
-    // ── STEP 6: TOOL USE LOOP ──────────────────────────────────────────────
-    // finish_reason === "tool_calls" means the LLM wants to call a tool
-    // instead of answering directly.  We loop up to 5 times so the agent
-    // can chain multiple tool calls if needed.
-    //
-    // Each iteration:
-    //   a) Read the tool name + arguments from the LLM response
-    //   b) Execute the tool (same function you called manually in step 3)
-    //   c) Inject the result back into groqHistory  (= step 5, automated)
-    //   d) Call the LLM again with the updated context
-    //
-    // With HR_CHATBOT_PROMPT this loop never runs — finish_reason is "stop".
-    // With HR_AGENT_PROMPT and a question about a specific employee, it runs once.
-    // Tool use loop — Groq signals tool requests with finish_reason === "tool_calls"
-    let loopCount = 0;
-    while (choice.finish_reason === "tool_calls" && loopCount < 5) {
-      loopCount++;
-      const toolCalls = choice.message.tool_calls || [];
-      const tc = toolCalls[0];
-      if (!tc) break;
-
-      const toolName = tc.function.name;
-      let toolInput: Record<string, unknown>;
-      try {
-        toolInput = JSON.parse(tc.function.arguments);
-      } catch {
-        toolInput = { raw: tc.function.arguments };
-      }
-
-      console.log(`[Orchestrator] Tool request (loop ${loopCount}): ${toolName}`, toolInput);
-
-      // Status: LLM responded with a tool call — show raw response + decision
-      addMessage({
-        role: "status",
-        content: JSON.stringify({ type: "llm_response", finish_reason: "tool_calls", responseContent: choice.message.content || null, tool_name: toolName, tool_input: toolInput }),
-        timestamp: new Date(),
-      });
-
-      // Add assistant message with tool_calls to groqHistory (proper Groq format)
-      groqHistory.push({
-        role: "assistant",
-        content: choice.message.content || null,
-        tool_calls: toolCalls,
-      });
-
-      // ── STEP 6B: EXECUTE THE TOOL ──────────────────────────────────────────
-      // This is the exact same `execute()` function you called manually in the
-      // Tool Dispatcher sandbox (exercise step 3).  The difference: the agent
-      // calls it automatically with the arguments the LLM chose.
-      // Execute the tool
-      const tool = tools.find((t) => t.name === toolName);
-      let toolResult: string;
-      if (tool) {
-        try {
-          toolResult = await tool.execute(toolInput);
-        } catch (err) {
-          toolResult = JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
-        }
-      } else {
-        toolResult = JSON.stringify({ error: `Tool "${toolName}" not found` });
-      }
-
-      console.log(`[Orchestrator] Tool result:`, toolResult);
-
-      // Add tool result to UI (cyan)
-      addMessage({
-        role: "tool",
-        content: toolResult,
-        timestamp: new Date(),
-        tool_call_id: tc.id,
-      });
-
-      // ── STEP 6C: INJECT RESULT INTO CONTEXT ────────────────────────────────
-      // This is the "paste the result back in" step from exercise step 5,
-      // done programmatically.  The tool result becomes a "tool" role message
-      // in groqHistory, tied to the LLM's request via tool_call_id.
-      // The LLM will see: system + user + its own tool request + this result.
-      // Add tool result to groqHistory (proper Groq format with tool_call_id)
-      groqHistory.push({
-        role: "tool",
-        tool_call_id: tc.id,
-        content: toolResult,
-      });
-
-      // ── STEP 6D: CALL LLM AGAIN WITH TOOL RESULT ───────────────────────────
-      // The LLM now has full context: system + user + its own tool request +
-      // the tool result.  It will either call another tool (loop again) or
-      // reply with finish_reason === "stop" (done).
-      // Status: re-calling LLM — include full updated context
-      addMessage({ role: "status", content: JSON.stringify({ type: "llm_call", callNum: loopCount + 1, contextMessages: groqHistory.slice(1) }), timestamp: new Date() });
-
-      choice = await callGroqAPI(groqHistory, tools, gatewayUrl);
-      console.log(`[Orchestrator] finish_reason=${choice.finish_reason}`);
+    // ── STOP: final answer ─────────────────────────────────────────────────
+    if (choice.finish_reason !== 'tool_calls' || loopCount >= 5) {
+      const finalAnswer = choice.message.content || '(no response)';
+      rounds.push({ request: requestSnapshot, finish_reason: 'stop', text: finalAnswer });
+      addMemoryEntry(userQuery, finalAnswer);
+      return { userQuery, rounds, finalAnswer };
     }
 
-    // Status: LLM responded with final answer — include raw response text
-    addMessage({
-      role: "status",
-      content: JSON.stringify({ type: "llm_response", finish_reason: "stop", responseContent: choice.message.content || null }),
-      timestamp: new Date(),
+    // ── TOOL CALL ──────────────────────────────────────────────────────────
+    // The LLM wants to call a tool.  Parse the request, execute the tool,
+    // record the round, then inject the result back into the prompt so the
+    // LLM has full context on the next call.  This is what the student did
+    // manually in exercise step 5 — paste result back and re-submit.
+    const toolCalls = choice.message.tool_calls || [];
+    const tc = toolCalls[0];
+    if (!tc) break;
+
+    const toolName = tc.function.name;
+    let toolInput: Record<string, unknown>;
+    try { toolInput = JSON.parse(tc.function.arguments); }
+    catch { toolInput = { raw: tc.function.arguments }; }
+
+    console.log(`[Orchestrator] Tool request: ${toolName}`, toolInput);
+
+    const tool = tools.find(t => t.name === toolName);
+    let toolResult: string;
+    if (tool) {
+      try { toolResult = await tool.execute(toolInput); }
+      catch (err) { toolResult = JSON.stringify({ error: err instanceof Error ? err.message : String(err) }); }
+    } else {
+      toolResult = JSON.stringify({ error: `Tool "${toolName}" not found` });
+    }
+
+    console.log(`[Orchestrator] Tool result:`, toolResult);
+
+    rounds.push({
+      request: requestSnapshot,
+      finish_reason: 'tool_calls',
+      text: choice.message.content || null,
+      toolName,
+      toolInput,
+      toolResult,
     });
 
-    // ── FINAL: WRITE ANSWER TO UI ─────────────────────────────────────────
-    // finish_reason === "stop" → the LLM is done reasoning.  Write the final
-    // assistant message to the Zustand store.  MessageHistory reads from the
-    // store and renders it as the green ✓ ASSISTANT card.
-    // Final assistant response
-    addMessage({
-      role: "assistant",
-      content: choice.message.content || "(no response)",
-      timestamp: new Date(),
-    });
+    // Extend prompt with the tool call + result for the next LLM call
+    prompt.push({ source: 'tool_call', text: choice.message.content || '', toolName, toolInput, toolCalls });
+    prompt.push({ source: 'tool_response', text: toolResult, toolCallId: tc.id });
 
-    console.log(`[Orchestrator] Orchestration complete.`);
-  } catch (error) {
-    console.error("[Orchestrator] Error:", error);
-    addMessage({
-      role: "assistant",
-      content: `⚠ Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      timestamp: new Date(),
-    });
-  } finally {
-    setLoading(false);
+    loopCount++;
   }
+
+  return { userQuery, rounds, finalAnswer: '(no response)' };
+}
+
+/**
+ * Direct, stateless single-turn LLM call — no system prompt, no tools, no memory.
+ * Used when Agent Mode is OFF. The user message is sent exactly as typed.
+ */
+export async function sendMessage(userMessage: string, gatewayUrl?: string): Promise<Exchange> {
+  const prompt: PromptMessage[] = [{ source: 'user', text: userMessage }];
+  const choice = await callGroqAPI(toGroqWire(prompt), [], gatewayUrl);
+  const finalAnswer = choice.message.content || '(no response)';
+  return {
+    userQuery: userMessage,
+    rounds: [{ request: prompt, finish_reason: 'stop', text: finalAnswer }],
+    finalAnswer,
+  };
 }
 
 /**
  * Export for testing/debugging
  */
-export { callGroqAPI, createPortkeyClient };
+export { callGroqAPI };

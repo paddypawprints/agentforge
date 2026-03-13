@@ -13,11 +13,25 @@ ${BENEFITS_DOC}
 
 const PRESETS = [
   {
+    id: 'bare',
+    label: 'CHAT BOT',
+    description: 'No system prompt',
+    prompt: '',
+    color: 'var(--pkd-foreground-muted)',
+  },
+  {
     id: 'chatbot',
     label: 'HR CHATBOT',
     description: 'No tools — HR Q&A only',
     prompt: HR_CHATBOT_PROMPT,
     color: 'var(--pkd-secondary)',
+  },
+  {
+    id: 'benefits',
+    label: 'BENEFITS DOC',
+    description: '2026 policy inline',
+    prompt: HR_BENEFITS_PROMPT,
+    color: 'var(--pkd-warning)',
   },
   {
     id: 'agent',
@@ -26,29 +40,25 @@ const PRESETS = [
     prompt: HR_AGENT_PROMPT,
     color: 'var(--pkd-primary)',
   },
-  {
-    id: 'benefits',
-    label: 'BENEFITS DOC',
-    description: '2026 policy inline',
-    prompt: HR_BENEFITS_PROMPT,
-    color: '#ffe600',
-  },
 ];
 
 interface SystemPromptEditorProps {
   variant?: 'default' | 'pkd';
+  onPresetChange?: (presetId: string | null) => void;
 }
 
-export function SystemPromptEditor({ variant = 'default' }: SystemPromptEditorProps) {
+export function SystemPromptEditor({ variant = 'default', onPresetChange }: SystemPromptEditorProps) {
   const [prompt, setPromptState] = useState(() => getSystemPrompt());
   const [saved, setSaved] = useState(true);
-  const [open, setOpen] = useState(true);
   const [activePreset, setActivePreset] = useState<string | null>('chatbot');
+  // collapse state for the non-pkd (default) variant only
+  const [open, setOpen] = useState(true);
 
   function handleChange(value: string) {
     setPromptState(value);
     setSaved(false);
     setActivePreset(null);
+    onPresetChange?.(null);
   }
 
   function handleApply() {
@@ -61,6 +71,7 @@ export function SystemPromptEditor({ variant = 'default' }: SystemPromptEditorPr
     setSystemPrompt(preset.prompt);
     setSaved(true);
     setActivePreset(preset.id);
+    onPresetChange?.(preset.id);
   }
 
   function handleReset() {
@@ -68,23 +79,17 @@ export function SystemPromptEditor({ variant = 'default' }: SystemPromptEditorPr
     setSystemPrompt(HR_CHATBOT_PROMPT);
     setSaved(true);
     setActivePreset('chatbot');
+    onPresetChange?.('chatbot');
   }
 
   if (variant === 'pkd') {
     return (
-      <div className="mb-8">
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className="pkd-button pkd-button-secondary text-xs flex items-center gap-2 w-full"
-        >
-          <span className={`inline-block w-2 h-2 rounded-full ${open ? 'bg-current' : 'border border-current'}`} />
-          SYSTEM PROMPT {open ? '▲ COLLAPSE' : '▼ EXPAND'}
-          {!saved && <span className="pkd-badge ml-auto" style={{ color: 'var(--pkd-warning, #fde047)' }}>UNSAVED</span>}
-        </button>
-
-        {open && (
-          <div className="pkd-card mt-2">
+      <div className="pkd-card">
+        {!saved && (
+          <span className="pkd-badge" style={{ color: 'var(--pkd-warning)', float: 'right', fontSize: 'var(--pkd-text-xs)' }}>
+            UNSAVED
+          </span>
+        )}
 
             {/* Preset buttons */}
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem' }}>
@@ -105,7 +110,7 @@ export function SystemPromptEditor({ variant = 'default' }: SystemPromptEditorPr
                     }}
                   >
                     {isActive ? '● ' : '○ '}{preset.label}
-                    <span style={{ display: 'block', fontSize: '0.75rem', opacity: 0.7, marginTop: '0.1rem' }}>
+                    <span style={{ display: 'block', fontSize: 'var(--pkd-text-xs)', opacity: 0.7, marginTop: '0.1rem' }}>
                       {preset.description}
                     </span>
                   </button>
@@ -123,9 +128,9 @@ export function SystemPromptEditor({ variant = 'default' }: SystemPromptEditorPr
                 boxSizing: 'border-box',
                 backgroundColor: 'var(--pkd-background-secondary)',
                 borderColor: saved ? 'var(--pkd-border-color)' : 'var(--pkd-primary)',
-                color: '#dce8d4',
+                color: 'var(--pkd-foreground-muted)',
                 fontFamily: 'var(--pkd-font-mono)',
-                fontSize: '0.875rem',
+                fontSize: 'var(--pkd-text-sm)',
               }}
             />
             <div className="flex gap-2 mt-3">
@@ -143,8 +148,6 @@ export function SystemPromptEditor({ variant = 'default' }: SystemPromptEditorPr
                 RESET
               </button>
             </div>
-          </div>
-        )}
       </div>
     );
   }
