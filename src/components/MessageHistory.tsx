@@ -1,299 +1,359 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Exchange, PromptMessage } from "../types/agent";
+import { useEffect } from "react";
+import { McpQuery } from "../services/mcp";
+import { Exchange, PromptMessage, Round } from "../types/agent";
 
-interface ScrollState {
-  isAtBottom: boolean;
-  autoScrollEnabled: boolean;
+export interface Hop {
+  id: string;
+  turn: number;
+  from: string;
+  to: string;
+  summary: string;
+  /** The whole payload. A model call is the JSON body that was posted. A model reply is the choice object. */
+  body: string;
 }
 
-interface UseAutoScrollOptions {
-  offset?: number;
-  smooth?: boolean;
-  content?: React.ReactNode;
+function pretty(value: unknown): string {
+  try { return JSON.stringify(value, null, 2); }
+  catch { return String(value); }
 }
 
-export function useAutoScroll(options: UseAutoScrollOptions = {}) {
-  const { offset = 20, smooth = false, content } = options;
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const lastContentHeight = useRef(0);
-  const userHasScrolled = useRef(false);
+function prettyText(text: string): string {
+  try { return JSON.stringify(JSON.parse(text), null, 2); }
+  catch { return text; }
+}
 
-  const [scrollState, setScrollState] = useState<ScrollState>({
-    isAtBottom: true,
-    autoScrollEnabled: true,
+function formatMessage(msg: PromptMessage): string {
+  switch (msg.source) {
+    case "system": return `SYSTEM\n${msg.text}`;
+    case "chatbot": return `CHATBOT\n${msg.text}`;
+    case "worker": return `WORKER\n${msg.text}`;
+    case "task": return `TASK\n${msg.text}`;
+    case "summary": return `SUMMARIZER\n${msg.text}`;
+    case "memory_user": return `MEMORY · USER\n${msg.text}`;
+    case "memory_assistant": return `MEMORY · ASSISTANT\n${msg.text}`;
+    case "user": return `USER\n${msg.text}`;
+    case "assistant": return `ASSISTANT\n${msg.text}`;
+    case "tool_call": return `TOOL CALL ${msg.toolName ?? ""}\n${pretty(msg.toolInput)}`;
+    case "tool_response": return `TOOL RESULT\n${prettyText(msg.text)}`;
+    case "plan": return `PLAN\n${msg.text}`;
+    case "embedded_tool": return `TOOL\n${msg.text}`;
+    default: return msg.text;
+  }
+}
+
+function formatRequest(msgs: PromptMessage[]): string {
+  return msgs.map(formatMessage).join("\n\n");
+}
+
+function oneLine(text: string, max = 72): string {
+  const line = text.split("\n").find((l) => l.trim()) ?? "";
+  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
+/** The session-start MCP query, drawn before any employee message. */
+export function mcpHops(queries: McpQuery[], stamp: number): Hop[] {
+  const hops: Hop[] = [];
+  queries.forEach((query) => {
+    hops.push({
+      id: `mcp-${stamp}-${query.id}-out`,
+      turn: 0,
+      from: "Harness",
+      to: "MCP",
+      summary: `initialize then tools/list · ${query.server} · ${query.transport}`,
+      body: query.request || "(no request)",
+    });
+    hops.push({
+      id: `mcp-${stamp}-${query.id}-in`,
+      turn: 0,
+      from: "MCP",
+      to: "Harness",
+      summary: `initialize then tools/list · ${query.server} · ${query.transport}`,
+      body: pretty(query.result),
+    });
   });
+  return hops;
+}
 
-  const checkIsAtBottom = useCallback(
-    (element: HTMLElement) => {
-      const { scrollTop, scrollHeight, clientHeight } = element;
-      const distanceToBottom = Math.abs(
-        scrollHeight - scrollTop - clientHeight
-      );
-      return distanceToBottom <= offset;
-    },
-    [offset]
-  );
+function pushToolPath(hops: Hop[], id: () => string, turn: number, speaker: string, round: Round) {
+  const args = pretty(round.toolInput);
+  if (round.mcp) {
+    hops.push({
+      id: id(),
+      turn,
+      from: "Harness",
+      to: "MCP",
+      summary: `tools/call · ${round.mcp.server} · ${round.mcp.transport}`,
+      body: pretty(round.mcp.request),
+    });
+    hops.push({
+      id: id(),
+      turn,
+      from: "MCP",
+      to: "Harness",
+      summary: `tools/call · ${round.mcp.server} · ${round.mcp.transport}`,
+      body: pretty(round.mcp.response),
+    });
+  } else {
+    hops.push({
+      id: id(),
+      turn,
+      from: "Harness",
+      to: "Tool",
+      summary: round.toolName ?? "tool",
+      body: `${round.toolName}(${args})`,
+    });
+    hops.push({
+      id: id(),
+      turn,
+      from: "Tool",
+      to: "Harness",
+      summary: round.toolName ?? "tool",
+      body: round.toolResult ? prettyText(round.toolResult) : "(no result)",
+    });
+  }
+  hops.push({
+    id: id(),
+    turn,
+    from: "Harness",
+    to: speaker,
+    summary: `tool result · ${round.toolName ?? "tool"}`,
+    body: round.toolResult ? prettyText(round.toolResult) : "(no result)",
+  });
+}
 
-  const scrollToBottom = useCallback(
-    (instant?: boolean) => {
-      if (!scrollRef.current) return;
+/** Walk every turn into the arrows the session diagram draws. */
+export function buildHops(exchanges: Exchange[]): Hop[] {
+  const hops: Hop[] = [];
 
-      const targetScrollTop =
-        scrollRef.current.scrollHeight - scrollRef.current.clientHeight;
+  exchanges.forEach((exchange, turnIdx) => {
+    const turn = turnIdx + 1;
+    const first = exchange.rounds[0]?.request ?? [];
+    let n = 0;
+    const id = () => `t${turn}-h${n++}`;
 
-      if (instant) {
-        scrollRef.current.scrollTop = targetScrollTop;
-      } else {
-        scrollRef.current.scrollTo({
-          top: targetScrollTop,
-          behavior: smooth ? "smooth" : "auto",
-        });
-      }
+    hops.push({
+      id: id(),
+      turn,
+      from: "User",
+      to: "Harness",
+      summary: oneLine(exchange.userQuery) || "(empty)",
+      body: exchange.userQuery,
+    });
 
-      setScrollState({
-        isAtBottom: true,
-        autoScrollEnabled: true,
+    const memory = first.filter((m) => m.source === "memory_user" || m.source === "memory_assistant");
+    if (memory.length > 0) {
+      const pairs = memory.filter((m) => m.source === "memory_user").length;
+      hops.push({
+        id: id(),
+        turn,
+        from: "Memory",
+        to: "Harness",
+        summary: `${pairs} prior turn${pairs === 1 ? "" : "s"}`,
+        body: formatRequest(memory),
       });
-      userHasScrolled.current = false;
-    },
-    [smooth]
-  );
-
-  const handleScroll = useCallback(() => {
-    if (!scrollRef.current) return;
-
-    const atBottom = checkIsAtBottom(scrollRef.current);
-
-    setScrollState((prev) => ({
-      isAtBottom: atBottom,
-      // Re-enable auto-scroll if at the bottom
-      autoScrollEnabled: atBottom ? true : prev.autoScrollEnabled,
-    }));
-  }, [checkIsAtBottom]);
-
-  useEffect(() => {
-    const element = scrollRef.current;
-    if (!element) return;
-
-    element.addEventListener("scroll", handleScroll, { passive: true });
-    return () => element.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
-
-  useEffect(() => {
-    const scrollElement = scrollRef.current;
-    if (!scrollElement) return;
-
-    const currentHeight = scrollElement.scrollHeight;
-    const hasNewContent = currentHeight !== lastContentHeight.current;
-
-    if (hasNewContent) {
-      if (scrollState.autoScrollEnabled) {
-        requestAnimationFrame(() => {
-          scrollToBottom(lastContentHeight.current === 0);
-        });
-      }
-      lastContentHeight.current = currentHeight;
     }
-  }, [content, scrollState.autoScrollEnabled, scrollToBottom]);
 
-  useEffect(() => {
-    const element = scrollRef.current;
-    if (!element) return;
+    exchange.rounds.forEach((round) => {
+      const speaker =
+        round.step === "agent" ? "LLM(Agent)" :
+        round.step === "plan" ? "LLM(Planner)" :
+        round.step === "task" ? "LLM(Worker)" :
+        round.step === "summary" ? "LLM(Summarizer)" :
+        "Model";
+      const promptRole =
+        round.step === "agent" ? "agent" :
+        round.step === "plan" ? "planner" :
+        round.step === "task" ? "worker" :
+        round.step === "summary" ? "summarizer" :
+        "model";
+      const passthrough = !round.step
+        && round.request.length === 1
+        && round.request[0]?.source === "user";
+      const reply = round.response != null ? pretty(round.response) : (round.text || "(no response)");
 
-    const resizeObserver = new ResizeObserver(() => {
-      if (scrollState.autoScrollEnabled) {
-        scrollToBottom(true);
+      hops.push({
+        id: id(),
+        turn,
+        from: "Harness",
+        to: speaker,
+        summary: round.step
+          ? `${promptRole} prompt`
+          : passthrough
+          ? "passthrough"
+          : `${round.request.length} messages`,
+        body: round.sent != null ? pretty(round.sent) : formatRequest(round.request),
+      });
+      if (round.finish_reason === "tool_calls" && round.toolName) {
+        hops.push({
+          id: id(),
+          turn,
+          from: speaker,
+          to: "Harness",
+          summary: `tool_calls · ${round.toolName}`,
+          body: reply,
+        });
+        pushToolPath(hops, id, turn, speaker, round);
+      } else {
+        hops.push({
+          id: id(),
+          turn,
+          from: speaker,
+          to: "Harness",
+          summary: oneLine(round.text || "(no response)"),
+          body: reply,
+        });
       }
     });
 
-    resizeObserver.observe(element);
-    return () => resizeObserver.disconnect();
-  }, [scrollState.autoScrollEnabled, scrollToBottom]);
+    const reply = exchange.finalAnswer || "(no response)";
+    hops.push({
+      id: id(),
+      turn,
+      from: "Harness",
+      to: "User",
+      summary: oneLine(reply) || "(no response)",
+      body: reply,
+    });
+  });
 
-  const disableAutoScroll = useCallback(() => {
-    const atBottom = scrollRef.current
-      ? checkIsAtBottom(scrollRef.current)
-      : false;
-
-    // Only disable if not at bottom
-    if (!atBottom) {
-      userHasScrolled.current = true;
-      setScrollState((prev) => ({
-        ...prev,
-        autoScrollEnabled: false,
-      }));
-    }
-  }, [checkIsAtBottom]);
-
-  return {
-    scrollRef,
-    isAtBottom: scrollState.isAtBottom,
-    autoScrollEnabled: scrollState.autoScrollEnabled,
-    scrollToBottom: () => scrollToBottom(false),
-    disableAutoScroll,
-  };
+  return hops;
 }
 
-/**
- * MessageHistory — renders a single Exchange returned by orchestrate() or sendMessage().
- * No store, no JSON parsing, no position arithmetic — just typed data rendered directly.
- */
-export function MessageHistory({ exchange, turnCount }: { exchange: Exchange | null; turnCount?: number }) {
-  const { scrollRef } = useAutoScroll({ offset: 20, smooth: true, content: exchange });
+function structured(text: string): unknown {
+  const trimmed = text.trim();
+  if (!trimmed) return text;
+  try { return JSON.parse(trimmed); } catch { /* several JSON values, or prose */ }
+  const parts = trimmed.split(/\n\n+/);
+  if (parts.length > 1) {
+    try { return parts.map((part) => JSON.parse(part)); } catch { /* keep the text */ }
+  }
+  return text;
+}
 
-  const G   = 'var(--pkd-primary)';
-  const B   = 'var(--pkd-secondary)';
-  const A   = 'var(--pkd-warning)';
-  const M   = 'var(--pkd-accent)';
-  const T   = 'var(--pkd-foreground-muted)';
-  const gBd = 'var(--pkd-primary-border)';
-  const bBd = 'var(--pkd-secondary-border)';
-  const aBd = 'var(--pkd-warning-border)';
-  const mBd = 'var(--pkd-accent-border, #c0392b55)';
-  const gBg = 'var(--pkd-primary-bg)';
-  const aBg = 'var(--pkd-warning-bg)';
+/** The whole trace as JSON: one entry per arrow, in the order the column draws them. */
+export function sessionExtract(hops: Hop[], turns: number): string {
+  return JSON.stringify({
+    turns,
+    hops: hops.map((hop) => {
+      return {
+        turn: hop.turn,
+        from: hop.from,
+        to: hop.to,
+        summary: hop.summary,
+        body: structured(hop.body),
+      };
+    }),
+  }, null, 2);
+}
 
-  const label = (color: string) => ({ fontSize: 'var(--pkd-text-xs)' as const, color, letterSpacing: '0.08em' });
-  const body  = (color: string) => ({ fontSize: 'var(--pkd-text-sm)' as const, color, margin: 0 as const, whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const });
-  const box   = (bg: string, bd: string) => ({ padding: '0.65rem 0.9rem', background: bg, border: `1px solid ${bd}`, borderRadius: '2px' });
-
-  if (!exchange) {
-    return (
-      <div ref={scrollRef} style={{ minHeight: '12rem', overflowY: 'auto', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p className="pkd-text-mono text-center" style={{ fontSize: 'var(--pkd-text-sm)', color: A }}>
-          [ NO MESSAGES ] — Type a message below and press SEND to start.
-        </p>
+export function HopInspector({ hop }: { hop: Hop | null }) {
+  return (
+    <div className="pkd-card" style={{ padding: "0.75rem 0.9rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", alignItems: "baseline", marginBottom: "0.45rem" }}>
+        <span className="pkd-text-mono" style={{ fontSize: "var(--pkd-text-xs)", letterSpacing: "0.08em", color: "var(--pkd-primary)", fontWeight: 700 }}>
+          {hop ? `${hop.from.toUpperCase()} → ${hop.to.toUpperCase()}` : "SELECT AN ARROW"}
+        </span>
       </div>
+      <pre
+        className="pkd-text-mono"
+        style={{
+          margin: 0,
+          height: "12rem",
+          overflow: "auto",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          fontSize: "var(--pkd-text-sm)",
+          color: hop ? "var(--pkd-foreground)" : "var(--pkd-foreground-muted)",
+        }}
+      >
+        {hop ? hop.body : "Send a message, then choose an arrow to read what moved."}
+      </pre>
+    </div>
+  );
+}
+
+export function HopList({
+  exchanges,
+  leading = [],
+  selectedId,
+  onSelect,
+  followId,
+}: {
+  exchanges: Exchange[];
+  /** Hops drawn before the first turn. Session-start MCP queries use turn 0. */
+  leading?: Hop[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  /** Scroll this hop into view when it changes, if the reader is still following the session. */
+  followId: string | null;
+}) {
+  const hops = [...leading, ...buildHops(exchanges)];
+
+  useEffect(() => {
+    if (!followId) return;
+    const el = document.getElementById(followId);
+    if (!el) return;
+    const scroller = el.closest("[data-hop-scroll]");
+    if (scroller instanceof HTMLElement) {
+      const distance = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+      if (distance > 360) return;
+    }
+    el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [followId]);
+
+  if (hops.length === 0) {
+    return (
+      <p className="pkd-text-mono" style={{ fontSize: "var(--pkd-text-sm)", color: "var(--pkd-warning)", margin: 0 }}>
+        [ NO MESSAGES ] — Type a message and press SEND to start.
+      </p>
     );
   }
 
-  // Render a single PromptMessage from the REQUEST section, colour-coded by source
-  const renderPromptMsg = (msg: PromptMessage, i: number) => {
-    switch (msg.source) {
-      case 'system':
-        return (
-          <div key={i} style={{ borderLeft: `2px solid ${aBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-            <span className="pkd-text-mono" style={{ ...label(A), fontWeight: 700 }}>SYSTEM PROMPT</span>
-            <pre className="pkd-text-mono" style={{ ...body(T), maxHeight: '5rem', overflowY: 'auto' }}>{msg.text}</pre>
-          </div>
-        );
-      case 'memory_user':
-        return (
-          <div key={i} style={{ borderLeft: `2px solid ${mBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-            <span className="pkd-text-mono" style={{ ...label(M), fontWeight: 700 }}>MEMORY · USER</span>
-            <pre className="pkd-text-mono" style={body(T)}>{msg.text}</pre>
-          </div>
-        );
-      case 'memory_assistant':
-        return (
-          <div key={i} style={{ borderLeft: `2px solid ${mBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-            <span className="pkd-text-mono" style={{ ...label(M), fontWeight: 700 }}>MEMORY · ASSISTANT</span>
-            <pre className="pkd-text-mono" style={body(T)}>{msg.text}</pre>
-          </div>
-        );
-      case 'user':
-        return (
-          <div key={i} style={{ borderLeft: `2px solid ${aBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-            <span className="pkd-text-mono" style={{ ...label(A), fontWeight: 700 }}>USER</span>
-            <pre className="pkd-text-mono" style={body(T)}>{msg.text}</pre>
-          </div>
-        );
-      case 'tool_call': {
-        let args = '';
-        try { args = JSON.stringify(msg.toolInput, null, 2); } catch { args = String(msg.toolInput); }
-        return (
-          <div key={i} style={{ borderLeft: `2px solid ${bBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-            <span className="pkd-text-mono" style={{ ...label(B), fontWeight: 700 }}>TOOL CALL</span>
-            <pre className="pkd-text-mono" style={{ ...body(B) }}>{msg.toolName}({args})</pre>
-          </div>
-        );
-      }
-      case 'tool_response': {
-        const pretty = (() => { try { return JSON.stringify(JSON.parse(msg.text), null, 2); } catch { return msg.text; } })();
-        return (
-          <div key={i} style={{ borderLeft: `2px solid ${bBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-            <span className="pkd-text-mono" style={{ ...label(B), fontWeight: 700 }}>TOOL RESULT</span>
-            <pre className="pkd-text-mono" style={{ ...body(B), maxHeight: '5rem', overflowY: 'auto' }}>{pretty}</pre>
-          </div>
-        );
-      }
-      default:
-        return null;
-    }
-  };
-
+  let lastTurn = -1;
   return (
-    <div ref={scrollRef} style={{ height: '100%', overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-
-      {/* Turn counter */}
-      {turnCount && turnCount > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingBottom: '0.25rem' }}>
-          <div style={{ flex: 1, height: '1px', background: aBd }} />
-          <span className="pkd-text-mono" style={{ ...label(A), whiteSpace: 'nowrap' }}>TURN {turnCount}</span>
-          <div style={{ flex: 1, height: '1px', background: aBd }} />
-        </div>
-      )}
-
-      {/* USER bubble */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-end' }}>
-        <span className="pkd-text-mono" style={label(A)}>USER</span>
-        <div style={{ maxWidth: '85%', ...box(aBg, aBd) }}>
-          <p className="pkd-text-mono" style={body(T)}>{exchange.userQuery}</p>
-        </div>
-      </div>
-
-      {/* One card per LLM round */}
-      {exchange.rounds.map((round, roundIdx) => (
-        <div key={roundIdx} style={{ border: `1px solid ${gBd}`, borderRadius: '4px' }}>
-
-          {/* Card header */}
-          <div style={{ padding: '0.35rem 0.75rem', background: gBg, borderBottom: `1px solid ${gBd}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className="pkd-text-mono" style={{ ...label(G), fontWeight: 700, letterSpacing: '0.1em' }}>
-              LLM CALL {exchange.rounds.length > 1 ? `${roundIdx + 1} OF ${exchange.rounds.length}` : ''}
-            </span>
-            <span className="pkd-text-mono" style={{ ...label(G), opacity: 0.6 }}>
-              {round.request.length} message{round.request.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-
-          {/* REQUEST */}
-          <div style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${gBd}`, display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '14rem', overflowY: 'auto' }}>
-            <span className="pkd-text-mono" style={{ ...label(G), opacity: 0.55 }}>REQUEST</span>
-            {round.request.map((msg, i) => renderPromptMsg(msg, i))}
-          </div>
-
-          {/* RESPONSE */}
-          <div style={{ padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', minHeight: '4rem', maxHeight: '14rem', overflowY: 'auto' }}>
-            <span className="pkd-text-mono" style={{ ...label(G), opacity: 0.55 }}>
-              RESPONSE · finish_reason: <span style={{ color: round.finish_reason === 'tool_calls' ? A : G, fontWeight: 700 }}>{round.finish_reason}</span>
-            </span>
-            {round.text && (
-              <div style={{ borderLeft: `2px solid ${gBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                <span className="pkd-text-mono" style={{ ...label(G), fontWeight: 700 }}>TEXT</span>
-                <pre className="pkd-text-mono" style={body(T)}>{round.text}</pre>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+      {hops.map((hop) => {
+        const divider = hop.turn !== lastTurn;
+        lastTurn = hop.turn;
+        const selected = hop.id === selectedId;
+        return (
+          <div key={hop.id}>
+            {divider && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0" }}>
+                <div style={{ flex: 1, height: "1px", background: "var(--pkd-warning-border)" }} />
+                <span className="pkd-text-mono" style={{ fontSize: "var(--pkd-text-xs)", letterSpacing: "0.08em", color: "var(--pkd-warning)", whiteSpace: "nowrap" }}>
+                  {hop.turn === 0 ? "SESSION" : `TURN ${hop.turn}`}
+                </span>
+                <div style={{ flex: 1, height: "1px", background: "var(--pkd-warning-border)" }} />
               </div>
             )}
-            {round.finish_reason === 'tool_calls' && round.toolName && (
-              <div style={{ borderLeft: `2px solid ${bBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                <span className="pkd-text-mono" style={{ ...label(B), fontWeight: 700 }}>TOOL CALL REQUEST</span>
-                <pre className="pkd-text-mono" style={body(B)}>
-                  {round.toolName}({(() => { try { return JSON.stringify(round.toolInput, null, 2); } catch { return String(round.toolInput); } })()})
-                </pre>
-              </div>
-            )}
-            {round.toolResult && (
-              <div style={{ borderLeft: `2px solid ${bBd}`, paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                <span className="pkd-text-mono" style={{ ...label(B), fontWeight: 700 }}>TOOL RESULT</span>
-                <pre className="pkd-text-mono" style={{ ...body(B), maxHeight: '5rem', overflowY: 'auto' }}>
-                  {(() => { try { return JSON.stringify(JSON.parse(round.toolResult!), null, 2); } catch { return round.toolResult; } })()}
-                </pre>
-              </div>
-            )}
+            <button
+              id={hop.id}
+              type="button"
+              onClick={() => onSelect(hop.id)}
+              aria-pressed={selected}
+              className="pkd-text-mono"
+              style={{
+                width: "100%",
+                textAlign: "left",
+                cursor: "pointer",
+                padding: "0.45rem 0.7rem",
+                borderRadius: "2px",
+                border: `1px solid ${selected ? "var(--pkd-primary)" : "var(--pkd-border-color)"}`,
+                background: selected ? "var(--pkd-primary-bg)" : "transparent",
+                color: "var(--pkd-foreground)",
+              }}
+            >
+              <span style={{ display: "block", fontSize: "var(--pkd-text-xs)", letterSpacing: "0.06em", color: "var(--pkd-primary)", fontWeight: 700 }}>
+                {hop.from} → {hop.to}
+              </span>
+              <span style={{ display: "block", marginTop: "0.15rem", fontSize: "var(--pkd-text-xs)", color: "var(--pkd-foreground-muted)" }}>
+                {hop.summary}
+              </span>
+            </button>
           </div>
-
-        </div>
-      ))}
-
+        );
+      })}
     </div>
   );
 }

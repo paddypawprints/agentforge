@@ -5,6 +5,7 @@
  * colors, animations, and components available.
  */
 
+/** Older component gallery. The reference screen is src/App.tsx. */
 export function PKDShowcase() {
   return (
     <div className="pkd-scan-lines min-h-screen" style={{ backgroundColor: 'var(--pkd-background)' }}>

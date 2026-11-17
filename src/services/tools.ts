@@ -22,12 +22,9 @@
  * This is the mock employee benefits database the tool queries.
  * In a real system this would be a database call, an internal API,
  * or a file read.  For the workshop it is an in-memory object.
- *
- * Note the SSN field — it is intentional.  In exercise step 9 you
- * will see Portkey's PII detection flag it in the response logs.
  * ═══════════════════════════════════════════════════════════════════ */
 // Mock employee benefits data from Employee_Benefits_2026.md
-const employeeBenefitsData: Record<string, Record<string, string | number>> = {
+export const employeeBenefitsData: Record<string, Record<string, string | number>> = {
   EMP001: {
     name: "Alice Johnson",
     ssn: "101-00-0001",
@@ -77,11 +74,21 @@ export interface ToolInputSchema {
   required: string[];
 }
 
+/** The JSON-RPC exchange behind one MCP tool call. */
+export interface McpTrace {
+  server: string;
+  transport: string;
+  request: unknown;
+  response: unknown;
+}
+
 export interface Tool {
   name: string;
   description: string;
   inputSchema: ToolInputSchema;
   execute: (input: Record<string, unknown>) => Promise<string>;
+  /** Set by an MCP tool while execute runs, then copied onto the round. */
+  mcpTrace?: McpTrace;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -101,21 +108,80 @@ export interface Tool {
  *                   in the Tool Dispatcher sandbox (step 3), and the
  *                   agent calls it automatically in step 6.
  * ═══════════════════════════════════════════════════════════════════ */
-// Benefits Lookup Tool
+const BENEFITS_DESCRIPTION =
+  "Look up employee benefits information by employee ID. Returns a summary of health insurance, dental, vision, retirement match, PTO days, and wellness stipend.";
+
+export const BENEFITS_PARAMETERS: ToolInputSchema = {
+  type: "object",
+  properties: {
+    employee_id: {
+      type: "string",
+      description: "The unique employee ID (e.g., EMP001)",
+    },
+  },
+  required: ["employee_id"],
+};
+
+/** The tool prompt. The box edits this JSON, and the message includes it as JSON. */
+export function formatToolPrompt(description: string): string {
+  const trimmed = description.trim();
+  if (!trimmed) return "";
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === "object") return JSON.stringify(parsed, null, 2);
+  } catch {
+    /* Prose is wrapped into the tool prompt object. */
+  }
+  return JSON.stringify(
+    { name: "benefits_lookup", description: trimmed, parameters: BENEFITS_PARAMETERS },
+    null,
+    2,
+  );
+}
+
+function toolFields(description: string): { description: string; parameters: ToolInputSchema } {
+  try {
+    const parsed = JSON.parse(description);
+    if (parsed && typeof parsed === "object") {
+      const prompt = parsed as { description?: unknown; parameters?: ToolInputSchema };
+      return {
+        description: typeof prompt.description === "string" ? prompt.description : description,
+        parameters: prompt.parameters?.type ? prompt.parameters : BENEFITS_PARAMETERS,
+      };
+    }
+  } catch {
+    /* The box is prose, so the schema stays the built-in one. */
+  }
+  return { description, parameters: BENEFITS_PARAMETERS };
+}
+
+export const DEFAULT_EMBEDDED_TOOL_DESCRIPTION = formatToolPrompt(BENEFITS_DESCRIPTION);
+
+let runtimeToolDescription = DEFAULT_EMBEDDED_TOOL_DESCRIPTION;
+
+/** The description included in the message to the model, and on the tool schema. */
+export function getEmbeddedToolDescription(): string {
+  return runtimeToolDescription;
+}
+
+export function setEmbeddedToolDescription(value: string) {
+  runtimeToolDescription = value;
+}
+
+export function getDefaultEmbeddedToolDescription(): string {
+  return DEFAULT_EMBEDDED_TOOL_DESCRIPTION;
+}
+
+/** The tool the model is offered. The JSON prompt supplies the description and parameters. */
+export function withEmbeddedToolDescription(tool: Tool): Tool {
+  if (tool.name !== "benefits_lookup") return tool;
+  const fields = toolFields(runtimeToolDescription);
+  return { ...tool, description: fields.description, inputSchema: fields.parameters };
+}
 export const benefitsLookupTool: Tool = {
   name: "benefits_lookup",
-  description:
-    "Look up employee benefits information by employee ID. Returns a summary of health insurance, dental, vision, retirement match, PTO days, and wellness stipend.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      employee_id: {
-        type: "string",
-        description: "The unique employee ID (e.g., EMP001)",
-      },
-    },
-    required: ["employee_id"],
-  },
+  description: BENEFITS_DESCRIPTION,
+  inputSchema: BENEFITS_PARAMETERS,
   execute: async (input: Record<string, unknown>): Promise<string> => {
     const startTime = performance.now();
     const employeeId = input.employee_id as string;

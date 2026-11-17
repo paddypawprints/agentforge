@@ -17,9 +17,9 @@
  * ║                                                                  ║
  * ║  WHY IT IS SEPARATE FROM THE UI STORE                           ║
  * ║  The UI renders exchanges (request + response + tool calls)      ║
- * ║  as a trace. Resetting that trace (CLEAR button) wipes the UI    ║
- * ║  display. Memory is deliberately separate so that clearing the   ║
- * ║  trace ALSO resets memory — the CLEAR button calls clearMemory() ║
+ * ║  as a trace. Starting a new session wipes the UI display.        ║
+ * ║  Memory is deliberately separate so that a new session ALSO      ║
+ * ║  resets memory — the NEW SESSION button calls clearMemory()      ║
  * ║  explicitly to ensure the two stay in sync.                      ║
  * ║                                                                  ║
  * ║  WHAT COUNTS AS A "TURN"                                        ║
@@ -51,6 +51,17 @@ export type MemoryEntry = {
  * Refreshing the browser wipes it automatically.
  */
 const store: MemoryEntry[] = [];
+const listeners = new Set<() => void>();
+
+function emit() {
+  listeners.forEach((listener) => listener());
+}
+
+/** Re-render when a turn is stored or the store is cleared. */
+export function subscribeMemory(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
 
 /**
  * Record a completed turn.
@@ -63,6 +74,7 @@ const store: MemoryEntry[] = [];
  */
 export function addMemoryEntry(user: string, assistant: string): void {
   store.push({ user, assistant });
+  emit();
 }
 
 /**
@@ -88,15 +100,22 @@ export function getMemory(): MemoryEntry[] {
   return [...store];
 }
 
+/** The stored turns as the JSON a prompt receives. Empty when nothing is stored. */
+export function formatMemoryText(entries: MemoryEntry[]): string {
+  if (!entries.length) return "";
+  return JSON.stringify(entries, null, 2);
+}
+
 /**
  * Wipe all stored turns.
  *
- * Called by the CLEAR button in App.tsx. After this, the next call to
+ * Called by the NEW SESSION button in App.tsx. After this, the next call to
  * orchestrate() will send only the system prompt and the new user message —
  * the agent will have no recollection of previous exchanges.
  */
 export function clearMemory(): void {
   store.length = 0;
+  emit();
 }
 
 /**

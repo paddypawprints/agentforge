@@ -1,19 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { orchestrate, sendMessage } from "../services/orchestrator";
+import { orchestrate, isPassthrough, RunControls } from "../services/orchestrator";
 import { Tool, Exchange } from "../types/agent";
 
 interface MessageComposerProps {
   tools: Tool[];
-  agentMode: boolean;
+  controls: RunControls;
+  mcp: boolean;
   isLoading: boolean;
   onExchange: (exchange: Exchange) => void;
   onLoadingChange: (loading: boolean) => void;
-  gatewayUrl?: string;
 }
 
-export function MessageComposer({ tools, agentMode, isLoading, onExchange, onLoadingChange, gatewayUrl }: MessageComposerProps) {
+function activeConcepts(controls: RunControls, tools: Tool[], mcp: boolean): string {
+  if (isPassthrough(controls)) return "PASSTHROUGH — the message is sent to the model as typed";
+  const on = [
+    controls.memory && "memory",
+    controls.chatbot && "chatbot",
+    controls.loop && "agent loop",
+    controls.grounding && "grounding",
+    controls.embeddedTool && (tools.length > 0 ? `embedded tool: ${tools.map((t) => t.name).join(", ")}` : "embedded tool"),
+    mcp && "MCP",
+  ].filter(Boolean);
+  return on.length ? `ON — ${on.join(" · ")}` : "PASSTHROUGH — the message is sent to the model as typed";
+}
+
+export function MessageComposer({ tools, controls, mcp, isLoading, onExchange, onLoadingChange }: MessageComposerProps) {
   const [input, setInput] = useState("");
 
   const handleSend = async () => {
@@ -22,9 +35,7 @@ export function MessageComposer({ tools, agentMode, isLoading, onExchange, onLoa
     setInput("");
     onLoadingChange(true);
     try {
-      const result = agentMode
-        ? await orchestrate(trimmed, tools, gatewayUrl)
-        : await sendMessage(trimmed, gatewayUrl);
+      const result = await orchestrate(trimmed, tools, controls);
       onExchange(result);
     } catch (error) {
       onExchange({
@@ -52,10 +63,8 @@ export function MessageComposer({ tools, agentMode, isLoading, onExchange, onLoa
         onKeyDown={handleKeyDown}
         placeholder={
           isLoading
-            ? agentMode ? "Agent is thinking..." : "Waiting for response..."
-            : agentMode
-            ? "Ask the agent something... (Enter to send, Shift+Enter for newline)"
-            : "Send a message to the LLM... (Enter to send, Shift+Enter for newline)"
+            ? controls.loop ? "Agent is thinking..." : "Waiting for response..."
+            : "Send a message... (Enter to send, Shift+Enter for newline)"
         }
         disabled={isLoading}
         rows={3}
@@ -77,8 +86,8 @@ export function MessageComposer({ tools, agentMode, isLoading, onExchange, onLoa
           style={{ flex: 1, opacity: isLoading ? 0.5 : 1 }}
         >
           {isLoading
-            ? agentMode ? "[ AGENT THINKING... ]" : "[ WAITING... ]"
-            : agentMode ? "[ SEND → AGENT ]" : "[ SEND → LLM ]"}
+            ? controls.loop ? "[ AGENT THINKING... ]" : "[ WAITING... ]"
+            : controls.loop ? "[ SEND → AGENT ]" : "[ SEND → MODEL ]"}
         </button>
         {isLoading && (
           <span className="pkd-text-mono" style={{ fontSize: "var(--pkd-text-xs)", color: 'var(--pkd-primary)', whiteSpace: "nowrap" }}>
@@ -87,9 +96,7 @@ export function MessageComposer({ tools, agentMode, isLoading, onExchange, onLoa
         )}
       </div>
       <div className="pkd-text-mono" style={{ fontSize: "var(--pkd-text-xs)", color: 'var(--pkd-foreground-muted)' }}>
-        {agentMode
-          ? tools.length > 0 ? `TOOLS AVAILABLE: ${tools.map(t => t.name).join(" · ")}` : "AGENT MODE — system prompt + memory, no tools"
-          : "DIRECT MODE — user message only, no system prompt, no memory"}
+        {activeConcepts(controls, tools, mcp)}
       </div>
     </div>
   );

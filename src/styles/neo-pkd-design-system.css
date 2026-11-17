@@ -1,76 +1,78 @@
 /**
- * Alpine Spring Design System
+ * RX-M type and color, sampled from https://rx-m.com/
  *
- * Inspired by the Austrian Alps in spring — open, light, clear.
+ * Headings are Palanquin. Body, buttons, and labels are Heebo.
+ * Blue #16479c, steel #44627c, gold #ffca7d, page tint #ebf2fc.
  * Built for conference projection: high contrast, readable at distance,
  * no animations, no dark mode, no glows.
  */
 
 :root {
-  /* === ALPINE COLOR PALETTE === */
+  /* === RX-M COLOR PALETTE === */
 
-  /* Primary: Alpine Forest Green */
-  --pkd-primary: #2d6a4f;
-  --pkd-primary-dark: #1e4d38;
-  --pkd-primary-light: #40916c;
-  --pkd-primary-glow: rgba(45, 106, 79, 0.15);
+  /* Primary: RX-M blue (links, rules, filled sections) */
+  --pkd-primary: #16479c;
+  --pkd-primary-dark: #0e3270;
+  --pkd-primary-light: #0c71c3;
+  --pkd-primary-glow: rgba(22, 71, 156, 0.15);
 
-  /* Secondary: Glacier Blue */
-  --pkd-secondary: #2a7fa5;
-  --pkd-secondary-dark: #1e6080;
-  --pkd-secondary-light: #3a9ec4;
-  --pkd-secondary-glow: rgba(42, 127, 165, 0.15);
+  /* Secondary: steel button blue */
+  --pkd-secondary: #44627c;
+  --pkd-secondary-dark: #345066;
+  --pkd-secondary-light: #5a7a96;
+  --pkd-secondary-glow: rgba(68, 98, 124, 0.15);
 
-  /* Accent: Alpine Rose */
-  --pkd-accent: #c0392b;
-  --pkd-accent-dark: #922b21;
-  --pkd-accent-light: #e74c3c;
-  --pkd-accent-glow: rgba(192, 57, 43, 0.15);
+  /* Accent: RX-M gold */
+  --pkd-accent: #ffca7d;
+  --pkd-accent-dark: #c4842a;
+  --pkd-accent-light: #ffd9a3;
+  --pkd-accent-glow: rgba(255, 202, 125, 0.35);
 
   /* Destructive: Deep Red */
   --pkd-destructive: #991b1b;
   --pkd-destructive-dark: #7f1d1d;
   --pkd-destructive-light: #b91c1c;
 
-  /* Warning: Golden Rod */
-  --pkd-warning: #92400e;
-  --pkd-warning-dark: #78350f;
-  --pkd-warning-glow: rgba(146, 64, 14, 0.15);
+  /* Warning: text-safe form of the RX-M gold (#ffca7d is too light on white) */
+  --pkd-warning: #8a5a12;
+  --pkd-warning-dark: #6e470e;
+  --pkd-warning-glow: rgba(138, 90, 18, 0.15);
 
-  /* Backgrounds: Warm Parchment */
-  --pkd-background: #f7f5f0;
+  /* Backgrounds: white cards on the pale blue section tint */
+  --pkd-background: #ebf2fc;
   --pkd-background-secondary: #ffffff;
-  --pkd-background-tertiary: #eef0e8;
+  --pkd-background-tertiary: #dce8f7;
 
-  /* Foreground: Deep Charcoal */
-  --pkd-foreground: #1c2b24;
-  --pkd-foreground-muted: #4a6558;
+  /* Foreground: near-black headings, site body gray */
+  --pkd-foreground: #222222;
+  --pkd-foreground-muted: #757575;
 
   /* Grid & Structure */
   --pkd-grid-size: 8px;
 
   /* Borders */
-  --pkd-border-color: #d4d8ce;
-  --pkd-border-color-active: #2d6a4f;
+  --pkd-border-color: #d5deea;
+  --pkd-border-color-active: #16479c;
   --pkd-border-width: 1px;
 
   /* Panel tints */
-  --pkd-primary-bg: rgba(45, 106, 79, 0.07);
-  --pkd-primary-border: rgba(45, 106, 79, 0.35);
-  --pkd-secondary-bg: rgba(42, 127, 165, 0.07);
-  --pkd-secondary-border: rgba(42, 127, 165, 0.35);
-  --pkd-warning-bg: rgba(146, 64, 14, 0.07);
-  --pkd-warning-border: rgba(146, 64, 14, 0.35);
+  --pkd-primary-bg: rgba(22, 71, 156, 0.08);
+  --pkd-primary-border: rgba(22, 71, 156, 0.35);
+  --pkd-secondary-bg: rgba(68, 98, 124, 0.08);
+  --pkd-secondary-border: rgba(68, 98, 124, 0.35);
+  --pkd-warning-bg: rgba(255, 202, 125, 0.22);
+  --pkd-warning-border: rgba(138, 90, 18, 0.35);
 
   /* Shadows — soft, natural depth */
-  --pkd-glow-soft: 0 1px 3px rgba(28, 43, 36, 0.08);
-  --pkd-glow-medium: 0 2px 8px rgba(28, 43, 36, 0.12);
-  --pkd-glow-intense: 0 4px 16px rgba(28, 43, 36, 0.18);
-  --pkd-shadow-paranoid: 0 2px 12px rgba(28, 43, 36, 0.15);
+  --pkd-glow-soft: 0 1px 3px rgba(22, 71, 156, 0.08);
+  --pkd-glow-medium: 0 2px 8px rgba(22, 71, 156, 0.12);
+  --pkd-glow-intense: 0 4px 16px rgba(22, 71, 156, 0.18);
+  --pkd-shadow-paranoid: 0 2px 12px rgba(22, 71, 156, 0.15);
 
-  /* Typography */
-  --pkd-font-sans: 'Inter', 'Helvetica Neue', 'Arial', sans-serif;
-  --pkd-font-mono: 'JetBrains Mono', 'ui-monospace', 'Cascadia Code', 'Fira Mono', monospace;
+  /* Typography — Palanquin headings, Heebo everywhere else (rx-m.com) */
+  --pkd-font-sans: 'Heebo', Helvetica, Arial, Lucida, sans-serif;
+  --pkd-font-heading: 'Palanquin', Helvetica, Arial, Lucida, sans-serif;
+  --pkd-font-mono: 'Heebo', Helvetica, Arial, Lucida, sans-serif;
   --pkd-letter-spacing-tight: -0.01em;
   --pkd-letter-spacing-normal: 0em;
   --pkd-letter-spacing-wide: 0.03em;
@@ -95,14 +97,12 @@
   --pkd-z-tooltip: 500;
 }
 
-/* === BACKGROUND — warm parchment with very subtle linen texture === */
+/* === BACKGROUND — RX-M pale blue === */
 body {
   background-color: var(--pkd-background);
-  /* Fine diagonal crosshatch — adds warmth without visual noise on projectors */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Cpath d='M0 4 L4 0' stroke='%23c8c4bb' stroke-width='0.4' opacity='0.5'/%3E%3C/svg%3E");
-  background-attachment: fixed;
   color: var(--pkd-foreground);
   font-family: var(--pkd-font-sans);
+  font-weight: 500;
   letter-spacing: var(--pkd-letter-spacing-normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -174,8 +174,8 @@ body {
   border-radius: 6px;
   padding: calc(var(--pkd-grid-size) * 1.25) calc(var(--pkd-grid-size) * 2.5);
   font-family: var(--pkd-font-sans);
-  font-weight: 600;
-  letter-spacing: var(--pkd-letter-spacing-wide);
+  font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
   transition: background-color var(--pkd-transition-fast), border-color var(--pkd-transition-fast), box-shadow var(--pkd-transition-fast);
   text-transform: uppercase;
@@ -285,7 +285,7 @@ body {
 
 /* === HEADING STYLES === */
 .pkd-heading {
-  font-family: var(--pkd-font-sans);
+  font-family: var(--pkd-font-heading);
   font-weight: 700;
   letter-spacing: var(--pkd-letter-spacing-tight);
   text-transform: uppercase;

@@ -1,3 +1,5 @@
+import { McpTrace } from "../services/tools";
+
 /**
  * Agent Orchestration Types
  * 
@@ -99,6 +101,9 @@ export interface Tool {
    * @returns A promise that resolves to the tool result as a string
    */
   execute: (input: Record<string, unknown>) => Promise<string>;
+
+  /** Set by an MCP tool while execute runs, then copied onto the round. */
+  mcpTrace?: McpTrace;
 }
 
 /**
@@ -130,16 +135,22 @@ export interface ToolResult {
  */
 export type PromptMessageSource =
   | 'system'
+  | 'chatbot'           // the chatbot's own prompt
   | 'memory_user'       // injected from conversation memory — user half
   | 'memory_assistant'  // injected from conversation memory — assistant half
   | 'user'              // current user query
   | 'assistant'         // LLM text response (stop finish_reason)
   | 'tool_call'         // LLM requested a tool (assistant turn with tool_calls)
-  | 'tool_response';    // tool result injected back into context
+  | 'tool_response'     // tool result injected back into context
+  | 'plan'              // the planner's plan, sent with the loop that follows
+  | 'worker'            // the worker prompt for the current task
+  | 'task'              // task memory, or the current task instruction
+  | 'summary'           // the summarizer prompt
+  | 'embedded_tool';    // description of a tool written in this app
 
 /**
  * A single message in the typed prompt representation.
- * Convert to Groq wire format with toGroqWire() before sending.
+ * Convert to chat-completions wire format with toWire() before sending.
  */
 export type PromptMessage = {
   source: PromptMessageSource;
@@ -147,7 +158,7 @@ export type PromptMessage = {
   toolName?: string;
   toolCallId?: string;
   toolInput?: Record<string, unknown>;
-  toolCalls?: any[];   // raw Groq tool_calls array, needed for toGroqWire()
+  toolCalls?: any[];   // raw tool_calls array, needed for toWire()
 };
 
 /**
@@ -161,6 +172,14 @@ export interface Round {
   toolName?: string;
   toolInput?: Record<string, unknown>;
   toolResult?: string;
+  /** Present when the tool ran on an MCP server. */
+  mcp?: McpTrace;
+  /** `agent` chooses the route. `plan` lists tasks. `task` is a worker call. `summary` writes the reply. `loop` is a chatbot tool round. */
+  step?: 'agent' | 'plan' | 'task' | 'summary' | 'loop';
+  /** The choice object returned by the model, before this app rewrites it. */
+  response?: unknown;
+  /** The JSON body posted for this call: every message, and tools when they were sent. */
+  sent?: unknown;
 }
 
 /**

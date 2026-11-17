@@ -1,15 +1,19 @@
-import { useState } from 'react';
-import { setSystemPrompt, getSystemPrompt, HR_CHATBOT_PROMPT, HR_AGENT_PROMPT } from '../services/orchestrator';
+import { useRef, useState } from 'react';
+import { setSystemPrompt, getSystemPrompt, getDefaultSystemPrompt, HR_CHATBOT_PROMPT, HR_AGENT_PROMPT } from '../services/orchestrator';
+import { JsonCodeEditor, JsonCodeEditorHandle } from './JsonCodeEditor';
+import { PromptRoleButtons } from './PromptRoleButtons';
+import { promptFromRoles } from '../services/promptStructure';
 import BENEFITS_DOC from '../data/Employee Benefits 2026.md?raw';
 
-const HR_BENEFITS_PROMPT =
-`You are an HR assistant. The employee benefits policy document for 2026 is included below for reference.
-Answer questions based solely on this document. If a question cannot be answered from the document, say so clearly.
-Do not answer questions unrelated to HR or the benefits policy.
-
---- BENEFITS POLICY ---
-${BENEFITS_DOC}
---- END OF POLICY ---`;
+const HR_BENEFITS_PROMPT = promptFromRoles([
+  {
+    role: "system",
+    content: "You are an HR assistant. Answer questions based solely on the policy document below. If a question cannot be answered from the document, say so clearly. Do not answer questions unrelated to HR or the benefits policy.",
+  },
+  { role: "system", content: BENEFITS_DOC },
+  { role: "memory", content: "{{memory}}" },
+  { role: "user", content: "{{user}}" },
+]);
 
 const PRESETS = [
   {
@@ -45,11 +49,16 @@ const PRESETS = [
 interface SystemPromptEditorProps {
   variant?: 'default' | 'pkd';
   onPresetChange?: (presetId: string | null) => void;
+  /** Hide the workshop preset buttons. The prompt editor still applies. */
+  showPresets?: boolean;
+  /** Skip the card chrome when the editor sits inside another card. */
+  bare?: boolean;
 }
 
-export function SystemPromptEditor({ variant = 'default', onPresetChange }: SystemPromptEditorProps) {
+export function SystemPromptEditor({ variant = 'default', onPresetChange, showPresets = true, bare = false }: SystemPromptEditorProps) {
   const [prompt, setPromptState] = useState(() => getSystemPrompt());
   const [saved, setSaved] = useState(true);
+  const box = useRef<JsonCodeEditorHandle>(null);
   const [activePreset, setActivePreset] = useState<string | null>('chatbot');
   // collapse state for the non-pkd (default) variant only
   const [open, setOpen] = useState(true);
@@ -74,17 +83,26 @@ export function SystemPromptEditor({ variant = 'default', onPresetChange }: Syst
     onPresetChange?.(preset.id);
   }
 
+  function insert(snippet: string) {
+    if (box.current) {
+      box.current.insert(snippet);
+      return;
+    }
+    handleChange(prompt.trim() ? `${prompt.replace(/\s*$/, "\n")}${snippet}` : snippet.trim());
+  }
+
   function handleReset() {
-    setPromptState(HR_CHATBOT_PROMPT);
-    setSystemPrompt(HR_CHATBOT_PROMPT);
+    const next = getDefaultSystemPrompt();
+    setPromptState(next);
+    setSystemPrompt(next);
     setSaved(true);
-    setActivePreset('chatbot');
-    onPresetChange?.('chatbot');
+    setActivePreset(null);
+    onPresetChange?.(null);
   }
 
   if (variant === 'pkd') {
     return (
-      <div className="pkd-card">
+      <div className={bare ? undefined : 'pkd-card'}>
         {!saved && (
           <span className="pkd-badge" style={{ color: 'var(--pkd-warning)', float: 'right', fontSize: 'var(--pkd-text-xs)' }}>
             UNSAVED
@@ -92,7 +110,7 @@ export function SystemPromptEditor({ variant = 'default', onPresetChange }: Syst
         )}
 
             {/* Preset buttons */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem' }}>
+            {showPresets && <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem' }}>
               {PRESETS.map((preset) => {
                 const isActive = activePreset === preset.id;
                 return (
@@ -116,22 +134,15 @@ export function SystemPromptEditor({ variant = 'default', onPresetChange }: Syst
                   </button>
                 );
               })}
-            </div>
+            </div>}
 
-            <textarea
+            <PromptRoleButtons onInsert={insert} />
+            <JsonCodeEditor
+              ref={box}
               value={prompt}
-              onChange={(e) => handleChange(e.target.value)}
-              rows={6}
-              className="pkd-input pkd-text-mono resize-y"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                backgroundColor: 'var(--pkd-background-secondary)',
-                borderColor: saved ? 'var(--pkd-border-color)' : 'var(--pkd-primary)',
-                color: 'var(--pkd-foreground-muted)',
-                fontFamily: 'var(--pkd-font-mono)',
-                fontSize: 'var(--pkd-text-sm)',
-              }}
+              onChange={handleChange}
+              label="Agent prompt"
+              height="16rem"
             />
             <div className="flex gap-2 mt-3">
               <button
@@ -166,12 +177,11 @@ export function SystemPromptEditor({ variant = 'default', onPresetChange }: Syst
       </button>
       {open && (
         <div className="mt-4">
-          <textarea
+          <JsonCodeEditor
             value={prompt}
-            onChange={(e) => handleChange(e.target.value)}
-            rows={6}
-            className="w-full rounded border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y"
-            style={{ borderColor: saved ? undefined : 'hsl(48 96% 53%)' }}
+            onChange={handleChange}
+            label="System prompt"
+            height="16rem"
           />
           <div className="flex gap-2 mt-3">
             <button

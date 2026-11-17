@@ -1,401 +1,302 @@
 ================================================================================
-  NEO PHILIP K DICK PARANOID FUTURE DESIGN SYSTEM
-  Complete Manifest & Deliverables
+  RX-M DESIGN SYSTEM
 ================================================================================
 
-PROJECT OVERVIEW
-================================================================================
-A production-ready design system inspired by Philip K. Dick'"'"'s paranoid vision
-of reality, featuring a dystopian, surveillance-state aesthetic with 
-retro-futuristic elements.
-
-THEME: Surveillance state, reality distortion, paranoid computing, glitchy 
-technology, neon dystopia
+The live app is the reference. Tokens live in
+src/styles/neo-pkd-design-system.css. The screen that uses them is src/App.tsx.
+Class names still use the pkd- prefix. Type and color are taken from rx-m.com:
+Palanquin headings, Heebo text, RX-M blue on a pale blue page. No neon, no
+glitch, no dark mode.
 
 ================================================================================
-DELIVERABLES
+SCREEN
 ================================================================================
 
-1. CSS DESIGN SYSTEM
-   File: src/styles/neo-pkd-design-system.css
-   Size: 12.7 KB
-   
-   Includes:
-   ✓ Color Palette (6 primary colors with variants)
-   ✓ Grid System (8px base unit with visible background)
-   ✓ Typography System (monospace + sans-serif)
-   ✓ Component Styles (buttons, cards, inputs, badges, alerts)
-   ✓ Animation Library (6 unique animations)
-   ✓ Utility Classes (glow, shadow, borders, etc.)
-   ✓ Responsive Design (mobile-first approach)
-   ✓ Accessibility Features (reduced motion, high contrast)
-   ✓ Light Mode Support (automatic via media queries)
+Header
+  Title "AI AGENTS" (pkd-heading-2, primary). Subtitle "Concepts" in muted mono.
 
-2. DESIGN SYSTEM DOCUMENTATION
-   
-   a) NEO_PKD_DESIGN_SYSTEM.md (11.9 KB)
-      - Complete component reference
-      - Color palette guide with meanings
-      - Typography guidelines
-      - Animation documentation
-      - Layout patterns
-      - CSS variables reference
-      - Usage examples
-      - Design philosophy
-      - Browser support
-      - Accessibility features
-   
-   b) PKD_DESIGN_SYSTEM_README.md (13.3 KB)
-      - Quick start guide
-      - What'"'"'s included overview
-      - Color palette table
-      - Grid system explanation
-      - Typography reference
-      - Component examples
-      - Animation demonstrations
-      - Layout patterns
-      - Accessibility features
-      - Light mode support
-      - Responsive design
-      - Design philosophy
-      - CSS variables reference
-      - Browser support
-      - Usage examples
-      - Next steps
+Main
+  Two columns, 1.5rem gap, aligned to the start. The first cards share a top edge.
+  Open: 1fr 1fr. Collapsed: 2.75rem 1fr.
+  The left column scrolls with the page. The right column sticks
+  (top 0.75rem, max-height calc(100vh - 6rem)).
 
-3. COMPONENTS & EXAMPLES
-   
-   a) src/App.tsx (Updated)
-      - Main application styled with PKD design system
-      - Header with neon green title
-      - Instructions card with paranoid pulse animation
-      - Two-column grid layout
-      - Session selector
-      - Clear Session button
-      - Cost Monitor section
-      - System status footer
-      - Grid reference footer
-   
-   b) src/App-pkd.tsx (9.1 KB)
-      - Template implementation
-      - Complete page structure
-      - Header with PKD styling
-      - Grid-based layout
-      - All component types
-      - Ready to use as reference
-   
-   c) src/components/PKDShowcase.tsx (14.3 KB)
-      - Interactive component showcase
-      - Color palette display
-      - Button variations
-      - Text styles and headings
-      - Badges and alerts
-      - All animations
-      - Form inputs
-      - Grid layout examples
+Left column — concepts
+  HIDE is a secondary button, aligned to the end of a row above the cards.
+  Collapsed, the control is a vertical CONCEPTS button (writing-mode vertical-rl,
+  about 8rem tall).
+  Each concept is a ConceptCard. The title folds that card on its own.
+  Open, it shows a definition and the control that turns the idea on.
+  A folded card keeps its title, and its ON/OFF switch when it has one.
+    ARCHITECTURE       no switch. A diagram of the live loop: the user
+                       sends a message to the harness and reads the answer.
+                       Memory sends the stored turns and keeps this one.
+                       Grounding is the document the harness inserts. The
+                       harness calls the model, the embedded tool in the
+                       page, and MCP in the page.
+    DATA               no switch. The benefits, salary, and retirement
+                       tables the tools read. Field names match the tool
+                       result. employee_lookup still returns only an id.
+    MODEL              always on. Ollama or OpenAI. Each has a model name
+                       and a base URL. Ollama starts at the host in
+                       src/config.ts, with /v1. OpenAI adds an optional API
+                       key shown as a password. Temperature sits beside the
+                       model name. Ollama adds a reasoning effort: none, low,
+                       medium, or high. None turns thinking off and is the
+                       start value.
+    MODE               one of None, Chatbot, AgentLoop. Default AgentLoop.
+                       None adds no prompt. Chatbot shows the chatbot prompt.
+                       SYSTEM, USER, ASSISTANT, MEMORY, and TOOL insert a
+                       JSON role with a blank line around it. AgentLoop sends the
+                       agent prompt. A chat reply is the answer. A workflow
+                       runs the planner, then the worker on each task, then
+                       the summarizer. The summarizer can send that workflow
+                       around again when the tasks did not achieve the request.
+                       TASKS, TOOL ROUNDS, and RETRIES limit a run. 0 does not
+                       stop. The chatbot, agent, planner, worker, and summarizer
+                       prompts start as JSON roles for the HR assistant.
+                       SYSTEM, USER, ASSISTANT, MEMORY, and TOOL are the roles.
+                       A grounding, tool, or task role is omitted when that
+                       text is empty. All five prompts have the same role buttons.
+    MEMORY             toggle. Default on. Body stays visible (keepBody)
+                       and shows the current memory content as JSON. Off: that
+                       content stays and is not sent, and new turns are
+                       not recorded.
+    GROUNDING          toggle. Default off. Body stays visible (keepBody).
+                       The text starts as the 2026 benefits policy and can
+                       be edited. On: {{grounding}} inserts that text.
+                       Off: the text stays and is not inserted.
+    EMBEDDED TOOL      toggle. Default off. Body stays visible (keepBody).
+                       The tool prompt is JSON. It is included in the
+                       message when the concept is on. The sandbox runs the
+                       tool by hand and does not enter the chat. The model
+                       can request it only in AgentLoop, and only while this
+                       is on.
+    MCP                toggle. Default off. Body stays visible (keepBody).
+                       Salary and retirement run in the page. A public server
+                       is a name, an https URL, an optional token shown as
+                       a password, and a helper note, reached with Streamable HTTP. Stdio is named
+                       and not used. While the switch is on, the harness
+                       queries each selected server at session start
+                       (initialize, then tools/list). Those hops are Harness
+                       to MCP and MCP to Harness, before any turn. {{mcp}}
+                       is each tool's name, description, and parameters.
+                       {{mcp-helper}} is the note on each selected server.
+                       The catalog stays what the server returned. A
+                       later tools/call is the
+                       same pair of hops, then Harness to the worker.
+    TEMPLATES          no switch. Lists the Mustache tags a prompt can use:
+                       memory, tool, mcp, mcp-helper, grounding, plan, task, task-history,
+                       retry, last-pass, and user. {{task}} is the planner step
+                       for this call. {{task-history}} is the finished steps.
+                       The harness fills those tags and does not add messages.
+                       {{#tools}} on the worker is the tools array for that
+                       call: the names in {{task}}, with schemas from {{mcp}}
+                       and {{tool}}. An empty list sends no array.
+                       {{grounding}} inserts the grounding document while
+                       that switch is on.
 
-4. INTEGRATION FILES
-   
-   a) src/index.tsx (Updated)
-      - Imports design system CSS
-      - import '"'"'./styles/neo-pkd-design-system.css'"'"';
-   
-   b) tailwind.config.js (Updated)
-      - Added PKD colors to Tailwind config
-      - Seamless integration with existing setup
+Mode None is a passthrough. The typed message is sent to the model as typed,
+and the reply comes back. Memory, grounding, tools, and MCP are not added.
 
-5. DOCUMENTATION FILES
-   
-   a) DESIGN_SYSTEM_SUMMARY.md (12.2 KB)
-      - Complete overview of all deliverables
-      - File statistics
-      - Design philosophy
-      - Key features
-      - How to use
-      - CSS variables reference
-      - Next steps
-   
-   b) QUICK_START.md (5.8 KB)
-      - 30-second getting started guide
-      - Code examples
-      - Color palette reference
-      - Grid system explanation
-      - Typography guidelines
-      - Animation demonstrations
-      - Common patterns
-      - Tips and best practices
+Right column — session
+  NEW SESSION is a secondary button on the row above the cards, aligned to
+  the end, so it lines up with HIDE. It wipes the trace and memory, then
+  the harness queries the selected MCP servers again. Concepts stay as they are.
+  Below that, three stacked regions. The composer and the inspector do not shrink.
+  The hop list scrolls inside the column.
+    Composer           a card. No section heading.
+    Inspector          one fixed window for the selected arrow.
+    SESSION            primary heading. EXPORT SESSION sits on that row and
+                       copies the whole trace as JSON. Then the hop list, then
+                       a TURNS badge.
+
+Footer
+  Muted Heebo: "RX-M".
 
 ================================================================================
-COLOR PALETTE
+PATTERNS IN THE APP
 ================================================================================
 
-Primary: #00ff41 (Neon Green)
-  - Usage: Surveillance, monitoring, main actions
-  - CSS Variable: --pkd-primary
-  - Glow Effect: rgba(0, 255, 65, 0.3)
+Concept card (src/components/ConceptCard.tsx)
+  pkd-card. Each card folds on its own. They start open.
+  The title is a button: a primary chevron, then mono, primary, 700,
+  tracking 0.06em, text-sm. aria-expanded matches the fold.
+  Definition, when open: mono, muted, text-sm, line-height 1.45.
+  Toggle: checkbox, accent primary. Label ON in primary, OFF in muted.
+  The switch stays visible when the card is folded.
+  The body hides when the card is folded, and when the concept is off,
+  unless keepBody is set.
 
-Secondary: #7c3aed (Paranoid Purple)
-  - Usage: Reality distortion, alternate actions
-  - CSS Variable: --pkd-secondary
-  - Glow Effect: rgba(124, 58, 237, 0.3)
+Section heading
+  pkd-heading pkd-heading-3, with a 0.75rem square in currentColor.
+  SESSION uses pkd-text-primary.
+  The square is the only decorative motion (Tailwind animate-pulse).
 
-Accent: #ff6b35 (Warning Orange)
-  - Usage: Warnings, alerts, danger indicators
-  - CSS Variable: --pkd-accent
-  - Glow Effect: rgba(255, 107, 53, 0.3)
+Composer (src/components/MessageComposer.tsx)
+  pkd-input, mono, text-sm.
+  Primary button: "[ SEND → AGENT ]" in AgentLoop,
+  "[ SEND → MODEL ]" in None and Chatbot.
+  Status line under the button, mono, xs, muted. It names what is actually on.
 
-Destructive: #ef4444 (Paranoid Red)
-  - Usage: Critical errors, threats
-  - CSS Variable: --pkd-destructive
+Inspector (HopInspector in src/components/MessageHistory.tsx)
+  pkd-card, padding about 0.75rem 0.9rem.
+  Label: mono, xs, primary, tracking 0.08em, "FROM → TO".
+  Empty label: "SELECT AN ARROW".
+  The payload is the whole hop. A call to the model is the JSON body that
+  was posted. That body is the compiled messages, plus a tools array when
+  the prompt has a {{#tools}} section. A reply from the model is the choice
+  object. An MCP hop is the
+  JSON-RPC messages, both directions. Nothing in the payload is behind a
+  switch. The pre is 12rem tall, mono, text-sm, wrapping.
 
-Background: #0a0a0a (Deep Black)
-  - Usage: Main background, void
-  - CSS Variable: --pkd-background
+Hop (HopList)
+  A turn opens with a hairline and "TURN N" in warning.
+  Each hop is a full-width button, text left, mono.
+  Resting: transparent, border --pkd-border-color.
+  Selected: border primary, background --pkd-primary-bg, aria-pressed.
+  First line: "From → To", primary, xs, tracking 0.06em, 700.
+  Second line: one-line summary, muted, xs.
+  A turn ends with Harness → User. That hop is the reply the user receives.
+  The planner and the tool loop stay inside the harness and do not get this hop.
+  Clicking a hop replaces the inspector. It does not move the list
+  unless the reader is still following the end of the session.
 
-Foreground: #f5f5f5 (Bright White)
-  - Usage: Text, primary content
-  - CSS Variable: --pkd-foreground
+Model choice
+  Ollama or OpenAI. The model name and the base URL are editable fields.
+  Each provider keeps its own values. OpenAI adds an API key input with
+  type password. The key is optional and is not written to disk.
 
-================================================================================
-GRID SYSTEM
-================================================================================
+Tool sandbox
+  Secondary color. pkd-input for the employee id, primary button
+  "[ LOOKUP BENEFITS ]". Result sits on --pkd-secondary-bg with a
+  secondary border. Errors use pkd-alert and destructive.
 
-Base Unit: 8px
-CSS Variable: --pkd-grid-size
-
-Visible Grid Background:
-  - Subtle grid pattern across entire page
-  - Suggests surveillance grid
-  - Customizable via CSS variables
-
-Grid-Aligned Components:
-  - All spacing uses 8px multiples
-  - Responsive grid layout
-  - Auto-fit columns on mobile
-
-================================================================================
-TYPOGRAPHY
-================================================================================
-
-Font Families:
-  - Monospace: '"'"'Courier New'"'"', '"'"'Courier'"'"', monospace
-  - Sans-serif: '"'"'Helvetica Neue'"'"', '"'"'Arial'"'"', sans-serif
-
-Heading Sizes:
-  - .pkd-heading-1: 2.5rem (page titles)
-  - .pkd-heading-2: 2rem (section headings)
-  - .pkd-heading-3: 1.5rem (subsection headings)
-
-Text Utilities:
-  - .pkd-text-primary: Green text with glow
-  - .pkd-text-secondary: Purple text with glow
-  - .pkd-text-accent: Orange text with glow
-  - .pkd-text-mono: Monospace font
-  - .pkd-text-uppercase: Uppercase with wide letter spacing
+Empty session
+  Mono, text-sm, warning: "[ NO MESSAGES ] — Type a message and press SEND to start."
 
 ================================================================================
-COMPONENTS
+COLOR
 ================================================================================
 
-Buttons:
-  - .pkd-button (primary)
-  - .pkd-button-secondary (secondary)
-  - .pkd-button-danger (danger)
-  - Glow effects on hover
-  - Glitch animation on click
+Use the CSS variables. Do not invent a second palette.
 
-Cards:
-  - .pkd-card
-  - Dark background with border
-  - Scan line animation at top
-  - Glow effect on hover
-  - Grid-aligned padding
+  --pkd-primary            #16479c   RX-M blue. Titles, ON, selected hop, primary buttons
+  --pkd-primary-light      #0c71c3   hover (site link blue)
+  --pkd-primary-dark       #0e3270   pressed
+  --pkd-primary-bg         tint      selected hop, badges, focus ring
+  --pkd-primary-border     tint      badges, model chip
 
-Inputs:
-  - .pkd-input
-  - Monospace font
-  - Green border on focus
-  - Glow effect on focus
-  - Dark background
+  --pkd-secondary          #44627c   steel. Tool sandbox, outline buttons
+  --pkd-secondary-bg
+  --pkd-secondary-border
 
-Badges:
-  - .pkd-badge (primary)
-  - .pkd-badge-secondary (secondary)
-  - .pkd-badge-danger (danger)
-  - Inline status indicators
+  --pkd-accent             #ffca7d   RX-M gold. Accent headings.
 
-Alerts:
-  - .pkd-alert (standard)
-  - .pkd-alert-warning (warning)
-  - .pkd-alert-danger (danger)
-  - Left-border accent
-  - Three severity levels
+  --pkd-warning            #8a5a12   text form of the gold. Empty session,
+                                     turn rules, tool-on without the loop
+  --pkd-warning-border
 
-================================================================================
-ANIMATIONS
-================================================================================
+  --pkd-destructive        #991b1b   tool errors
 
-Paranoid Pulse (2s):
-  - Pulsing glow effect
-  - Suggests surveillance
-  - .pkd-paranoid-pulse
+  --pkd-background         #ebf2fc   pale blue page
+  --pkd-background-secondary #ffffff cards, inputs
+  --pkd-background-tertiary #dce8f7
 
-Scan Lines (8s):
-  - CRT monitor effect
-  - Horizontal lines moving down
-  - .pkd-scan-lines
+  --pkd-foreground         #222222   near-black
+  --pkd-foreground-muted   #757575   site body gray. Definitions, summaries, status
 
-Reality Distortion (4s):
-  - Subtle skew animation
-  - Suggests reality bending
-  - .pkd-reality-distort
+  --pkd-border-color       #d5deea
+  --pkd-border-color-active #16479c
 
-Surveillance Blink (3s):
-  - Blinking effect
-  - Suggests monitoring
-  - .pkd-surveillance-blink
-
-Glitch (0.3s):
-  - Reality-distorting glitch
-  - Clip-path animation
-  - .pkd-glitch
-
-Spinner:
-  - Loading animation
-  - Rotating border
-  - .pkd-spinner
+SVG cannot read these variables. ArchitectureDiagram.tsx keeps the same
+hex values and says so.
 
 ================================================================================
-ACCESSIBILITY FEATURES
+TYPE
 ================================================================================
 
-✓ High Contrast Ratios (WCAG AA compliant)
-✓ Clear Focus States with glow effects
-✓ Reduced Motion Support (respects prefers-reduced-motion)
-✓ Semantic HTML Structure
-✓ Keyboard Navigation Support
-✓ Screen Reader Friendly
-✓ Light Mode Support (automatic via media queries)
-✓ Mobile-First Responsive Design
+  --pkd-font-heading Palanquin, Helvetica, Arial, Lucida
+  --pkd-font-sans    Heebo, Helvetica, Arial, Lucida
+  --pkd-font-mono    Heebo, Helvetica, Arial, Lucida
+
+  --pkd-text-xs     0.75rem     labels, hop summaries, badges
+  --pkd-text-sm     0.9375rem   definitions, prompts, inspector, inputs
+  --pkd-text-base   1rem
+  --pkd-text-lg     1.125rem
+
+Headings are Palanquin, 700, uppercase, tight tracking.
+Body, buttons, concepts, hops, prompts, and status are Heebo.
+  pkd-heading-1   1.5rem
+  pkd-heading-2   1.125rem    page title
+  pkd-heading-3   text-xs     section labels
+
+Buttons are Heebo, 700, uppercase, xs.
+Concepts, hops, prompts, and status use the same Heebo face.
 
 ================================================================================
-BROWSER SUPPORT
+COMPONENTS (CLASSES)
 ================================================================================
 
-✓ Chrome/Edge (latest)
-✓ Firefox (latest)
-✓ Safari (latest)
-✓ Mobile browsers (iOS Safari, Chrome Mobile)
+Buttons
+  pkd-button              blue fill, white label
+  pkd-button-primary      same
+  pkd-button-secondary    transparent, blue border and label
+  pkd-button-danger       deep red fill
+
+Cards and fields
+  pkd-card                white, 8px radius, 1px border, soft shadow,
+                          2px blue rule along the top
+  pkd-input               white, 6px radius, Heebo. Focus: blue border
+                          and a 3px primary-bg ring. The message box uses this.
+                          Prompt and document boxes use the Monaco editor
+                          with JSON formatting. The message box stays plain text.
+  pkd-badge               blue tint. pkd-badge-secondary, pkd-badge-danger
+  pkd-alert               white, 3px left rule. pkd-alert-warning, pkd-alert-danger
+
+Text
+  pkd-text-primary, pkd-text-secondary, pkd-text-accent,
+  pkd-text-warning, pkd-text-danger, pkd-text-mono, pkd-text-uppercase
+
+Structure
+  pkd-border-top, pkd-border-bottom, pkd-border-left, pkd-border-right
+  pkd-divider
+  pkd-spinner             the loading indicator
+
+These classes remain and do nothing. Do not add them for effect:
+  pkd-scan-lines, pkd-glitch, pkd-paranoid-pulse,
+  pkd-reality-distort, pkd-surveillance-blink
+
+Spacing is on an 8px grid (--pkd-grid-size). Cards use 3 units of padding.
+Radius is 8px on cards, 6px on buttons and inputs, 4px on badges.
 
 ================================================================================
-FILE STATISTICS
+MOTION
 ================================================================================
 
-Design System CSS:           12.7 KB
-Detailed Reference:          11.9 KB
-Quick Start Guide:           13.3 KB
-Component Showcase:          14.3 KB
-Template App:                 9.1 KB
-Summary Document:            12.2 KB
-Quick Start:                  5.8 KB
-Manifest (this file):         ~8 KB
+Built for a projector. No glow pulses, no scan lines, no glitch.
+The spinner rotates. Section squares use a short pulse.
+prefers-reduced-motion reduces animation and transitions to nothing.
 
-Total Documentation:         ~87 KB
-Total Code:                  ~50 KB
-Total Deliverables:         ~137 KB
+Shadows are soft depth, not neon:
+  --pkd-glow-soft, --pkd-glow-medium, --pkd-glow-intense
 
 ================================================================================
-HOW TO USE
+WHERE TO LOOK
 ================================================================================
 
-1. The design system CSS is already imported in src/index.tsx
-2. Use PKD classes in your components
-3. All colors use CSS variables for easy customization
-4. Combine animations for unique effects
-5. Follow the grid system for consistent spacing
-6. Refer to documentation for detailed reference
+  src/styles/neo-pkd-design-system.css     tokens and classes
+  src/styles/NEO_PKD_DESIGN_SYSTEM.md      the same system, written out
+  src/App.tsx                              the reference screen
+  src/components/ConceptCard.tsx
+  src/components/MessageHistory.tsx        inspector and hops
+  src/components/MessageComposer.tsx
 
-Example:
-  <div className="pkd-scan-lines min-h-screen" style={{ backgroundColor: '"'"'var(--pkd-background)'"'"' }}>
-    <h1 className="pkd-heading pkd-heading-1 pkd-text-primary">
-      PARANOID FUTURE
-    </h1>
-    <div className="pkd-card pkd-paranoid-pulse">
-      <p className="pkd-text-mono">Content here...</p>
-    </div>
-    <button className="pkd-button">CLICK ME</button>
-  </div>
+src/App-pkd.tsx and src/components/PKDShowcase.tsx are not the reference.
 
 ================================================================================
-DESIGN PHILOSOPHY
+VERSION
 ================================================================================
 
-Paranoia as Aesthetic:
-  - Grid background = surveillance grid
-  - Glowing elements = monitoring lights
-  - Scan lines = CRT monitoring
-  - Pulsing effects = system heartbeat
-
-Reality Distortion:
-  - Glitch animations = reality breaking
-  - Skew transformations = perspective warping
-  - Color shifts = perception changes
-  - Opacity changes = fading in/out
-
-Retro-Futuristic:
-  - Monospace fonts = terminal aesthetic
-  - Neon colors = arcade aesthetic
-  - Grid-based layout = computer grid
-  - Sharp edges = technical precision
-
-Accessibility First:
-  - High contrast ratios for readability
-  - Clear focus states for navigation
-  - Reduced motion support for accessibility
-  - Semantic HTML for screen readers
-
-================================================================================
-NEXT STEPS
-================================================================================
-
-1. Explore the Showcase
-   - View PKDShowcase component to see all elements in action
-
-2. Read the Documentation
-   - Check NEO_PKD_DESIGN_SYSTEM.md for detailed reference
-   - Check QUICK_START.md for quick examples
-
-3. Use in Your App
-   - Import the CSS (already done)
-   - Start using the classes in your components
-
-4. Customize
-   - Modify CSS variables in neo-pkd-design-system.css
-   - Adjust colors, spacing, or animations
-
-5. Extend
-   - Add new components following the established patterns
-   - Maintain the paranoid, surveillance-state aesthetic
-
-================================================================================
-CREDITS
-================================================================================
-
-Inspired by:
-  - Philip K. Dick'"'"'s paranoid vision of reality
-  - 1980s computer aesthetics
-  - Cyberpunk design movements
-  - Surveillance state themes
-  - Retro-futuristic UI design
-
-================================================================================
-VERSION & STATUS
-================================================================================
-
-Version: 1.0
-Status: Production Ready ✅
-Last Updated: 2024
-
-================================================================================
-EOF
-cat /workspace/DESIGN_SYSTEM_MANIFEST.txt
+RX-M type and color. The screen in src/App.tsx is the reference.
+Last updated: 2026-11-12

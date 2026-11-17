@@ -266,7 +266,6 @@ const groq = new Groq({
 async function callGroqAPI(
   messages: Message[],
   tools: Tool[],
-  gatewayUrl?: string
 ) {
   // Convert messages to Groq format
   const groqMessages = messages.map((msg) => ({
@@ -284,10 +283,8 @@ async function callGroqAPI(
     },
   }));
 
-  // Call Groq API (or Portkey gateway if provided)
-  const client = gatewayUrl ? createPortkeyClient(gatewayUrl) : groq;
-
-  const response = await client.chat.completions.create({
+  // Call the model
+  const response = await groq.chat.completions.create({
     model: "mixtral-8x7b-32768",
     messages: groqMessages,
     tools: groqTools,
@@ -311,7 +308,6 @@ Always explain your reasoning.`,
 export async function orchestrate(
   userQuery: string,
   tools: Tool[],
-  gatewayUrl?: string
 ) {
   const { addMessage, messages } = useAgentStore.getState();
 
@@ -324,7 +320,7 @@ export async function orchestrate(
     });
 
     // Step 2: Call LLM
-    let response = await callGroqAPI(messages, tools, gatewayUrl);
+    let response = await callGroqAPI(messages, tools);
 
     // Step 3: Handle tool use (loop)
     while (response.stop_reason === "tool_use") {
@@ -362,7 +358,7 @@ export async function orchestrate(
       });
 
       // Loop: Call LLM again with result
-      response = await callGroqAPI(messages, tools, gatewayUrl);
+      response = await callGroqAPI(messages, tools);
     }
 
     // Step 4: Add final response
@@ -479,31 +475,6 @@ const response = await groq.chat.completions.create({
 });
 ```
 
-### Session 3: Portkey Gateway (Governance & FinOps)
-
-- Wraps Groq client with Portkey gateway
-- Adds PII masking (SSN, email, credit card detection)
-- Tracks cost per turn
-- Implements rate limiting
-
-```typescript
-// Session 3: Portkey-wrapped Groq
-const portkeyClient = createPortkeyClient(
-  import.meta.env.VITE_PORTKEY_API_KEY
-);
-
-const response = await portkeyClient.chat.completions.create({
-  model: "mixtral-8x7b-32768",
-  messages: messages,
-  tools: tools,
-  // Portkey adds:
-  // - PII masking
-  // - Cost tracking
-  // - Rate limiting
-  // - Request logging
-});
-```
-
 ## Debugging Tips
 
 ### 1. Inspect Messages Array
@@ -560,7 +531,6 @@ execute: async (input) => {
 
 **Next Steps:**
 - Session 2: Run the orchestrator and observe the messages array
-- Session 3: Add Portkey gateway to track costs and PII masking
 - Advanced: Implement custom tools for your domain
 
 **Related Files:**

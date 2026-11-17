@@ -1,91 +1,110 @@
 export function ArchitectureDiagram() {
-  // SVG presentation attributes don't support CSS var() — hex values kept in sync with Alpine Spring tokens
-  const G = '#2d6a4f'; // --pkd-primary  (alpine forest green)
-  const B = '#2a7fa5'; // --pkd-secondary (glacier blue)
-  const A = '#92400e'; // --pkd-warning  (golden rod)
-  const bg = '#f7f5f0'; // --pkd-background
-  const border = '#d4d8ce'; // --pkd-border-color
-  const mono = "'JetBrains Mono', 'ui-monospace', monospace";
-
+  const title = "var(--pkd-font-mono)";
   return (
     <svg
-      viewBox="0 0 640 300"
+      viewBox="0 0 560 360"
       xmlns="http://www.w3.org/2000/svg"
-      style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '6px' }}
-      aria-label="Agent architecture: UI → Orchestrator ↔ Groq API, Orchestrator ↔ Tool"
+      role="img"
+      aria-label="The user sends a message to the harness and reads the answer. Memory sends prior turns and stores this turn. Grounding is the document the harness inserts. The harness calls the model, an embedded tool in the page, and MCP in the page."
+      style={{ width: "100%", height: "auto", display: "block" }}
     >
-      {/* Background */}
-      <rect x="0" y="0" width="640" height="300" fill={bg} rx="6" />
-
       <defs>
-        <marker id="arch-ag" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <polygon points="0 0, 7 3.5, 0 7" fill={G} />
+        <marker id="af-arch-primary" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <polygon points="0 0, 8 4, 0 8" fill="var(--pkd-primary)" />
         </marker>
-        <marker id="arch-ab" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <polygon points="0 0, 7 3.5, 0 7" fill={B} />
-        </marker>
-        <marker id="arch-aa" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <polygon points="0 0, 7 3.5, 0 7" fill={A} />
+        <marker id="af-arch-secondary" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <polygon points="0 0, 8 4, 0 8" fill="var(--pkd-secondary)" />
         </marker>
       </defs>
 
-      {/* ── BOXES ──────────────────────────────────────── */}
+      <Box x={8} y={8} w={140} h={52} tone="secondary" titleFont={title} label="GROUNDING" detail="the document" />
+      <Box x={220} y={8} w={160} h={52} tone="warning" titleFont={title} label="MEMORY" detail="stored turns" />
+      <Box x={8} y={148} w={140} h={56} tone="warning" titleFont={title} label="USER" detail="asks and reads" />
+      <Box x={220} y={148} w={160} h={64} tone="primary" titleFont={title} label="HARNESS" detail="owns the loop" />
+      <Box x={416} y={48} w={136} h={52} tone="secondary" titleFont={title} label="MODEL" detail="Ollama or OpenAI" />
+      <Box x={8} y={276} w={168} h={56} tone="secondary" titleFont={title} label="EMBEDDED TOOL" detail="in the page" />
+      <Box x={400} y={272} w={152} h={64} tone="secondary" titleFont={title} label="MCP" detail="in the page" />
 
-      {/* MessageComposer (warning/amber, top-left) */}
-      <rect x="15" y="20" width="155" height="42" fill="rgba(146,64,14,0.07)" stroke={A} strokeWidth="1.5" rx="5" />
-      <text x="92" y="37" textAnchor="middle" fill={A} fontFamily={mono} fontSize="10" fontWeight="bold" letterSpacing="0">MessageComposer</text>
-      <text x="92" y="52" textAnchor="middle" fill="rgba(146,64,14,0.55)" fontFamily={mono} fontSize="9">UI · user input</text>
+      <Arrow x1={148} y1={34} x2={220} y2={170} marker="af-arch-primary" />
+      <Label x={16} y={92} tone="primary">document</Label>
 
-      {/* MessageHistory (warning/amber, bottom-left) */}
-      <rect x="15" y="238" width="155" height="42" fill="rgba(146,64,14,0.07)" stroke={A} strokeWidth="1.5" rx="5" />
-      <text x="92" y="255" textAnchor="middle" fill={A} fontFamily={mono} fontSize="10" fontWeight="bold" letterSpacing="0">MessageHistory</text>
-      <text x="92" y="270" textAnchor="middle" fill="rgba(146,64,14,0.55)" fontFamily={mono} fontSize="9">UI · trace view</text>
+      <Arrow x1={270} y1={60} x2={270} y2={148} marker="af-arch-primary" />
+      <Label x={278} y={108} tone="primary">turns</Label>
 
-      {/* ORCHESTRATOR (primary/green, center) */}
-      <rect x="228" y="119" width="185" height="48" fill="rgba(45,106,79,0.08)" stroke={G} strokeWidth="2" rx="5" />
-      <text x="320" y="138" textAnchor="middle" fill={G} fontFamily={mono} fontSize="11" fontWeight="bold" letterSpacing="1">ORCHESTRATOR</text>
-      <text x="320" y="154" textAnchor="middle" fill="rgba(45,106,79,0.6)" fontFamily={mono} fontSize="8.5">orchestrator.ts · owns the loop</text>
+      <Arrow x1={330} y1={148} x2={330} y2={60} marker="af-arch-secondary" />
+      <Label x={338} y={108} tone="secondary">write</Label>
 
-      {/* GROQ API (secondary/blue, top-right) */}
-      <rect x="480" y="119" width="145" height="48" fill="rgba(42,127,165,0.07)" stroke={B} strokeWidth="1.5" rx="5" />
-      <text x="552" y="138" textAnchor="middle" fill={B} fontFamily={mono} fontSize="10" fontWeight="bold" letterSpacing="0.5">MODEL</text>
-      <text x="552" y="154" textAnchor="middle" fill="rgba(42,127,165,0.6)" fontFamily={mono} fontSize="9">Groq · LLM inference</text>
+      <Arrow x1={148} y1={168} x2={220} y2={168} marker="af-arch-primary" />
+      <Label x={156} y={160} tone="primary">message</Label>
 
-      {/* benefits_lookup (secondary/blue, bottom-center-right) */}
-      <rect x="290" y="238" width="160" height="42" fill="rgba(42,127,165,0.07)" stroke={B} strokeWidth="1.5" rx="5" />
-      <text x="370" y="255" textAnchor="middle" fill={B} fontFamily={mono} fontSize="10" fontWeight="bold" letterSpacing="0">benefits_lookup</text>
-      <text x="370" y="270" textAnchor="middle" fill="rgba(42,127,165,0.6)" fontFamily={mono} fontSize="9">tool · tools.ts</text>
+      <Arrow x1={220} y1={192} x2={148} y2={192} marker="af-arch-secondary" />
+      <Label x={156} y={228} tone="secondary">answer</Label>
 
-      {/* ── ARROWS ─────────────────────────────────────── */}
+      <Arrow x1={360} y1={148} x2={440} y2={100} marker="af-arch-primary" />
+      <Label x={392} y={124} tone="primary">messages</Label>
 
-      {/* 1 · MessageComposer → ORCHESTRATOR */}
-      <line x1="170" y1="41" x2="227" y2="133" stroke={A} strokeWidth="1.5" markerEnd="url(#arch-aa)" />
-      <text x="210" y="79" textAnchor="start" fill={A} fontFamily={mono} fontSize="8.5">orchestrate(msg)</text>
+      <Arrow x1={500} y1={100} x2={380} y2={168} marker="af-arch-secondary" />
+      <Label x={456} y={140} tone="secondary">reply</Label>
 
-      {/* 2 · ORCHESTRATOR → MessageHistory (via Zustand store) */}
-      <line x1="228" y1="153" x2="170" y2="237" stroke={A} strokeWidth="1.5" markerEnd="url(#arch-aa)" />
-      <text x="192" y="198" textAnchor="middle" fill={A} fontFamily={mono} fontSize="8.5">addMessage()</text>
-      <text x="192" y="210" textAnchor="middle" fill="rgba(146,64,14,0.5)" fontFamily={mono} fontSize="8">[Zustand store]</text>
+      <Arrow x1={280} y1={212} x2={120} y2={276} marker="af-arch-primary" />
+      <Label x={168} y={248} tone="primary">call</Label>
 
-      {/* 3a · ORCHESTRATOR → GROQ: messages[] */}
-      <line x1="413" y1="136" x2="479" y2="136" stroke={G} strokeWidth="1.5" markerEnd="url(#arch-ag)" />
-      <text x="446" y="112" textAnchor="middle" fill={G} fontFamily={mono} fontSize="8.5">messages[ ]</text>
+      <Arrow x1={100} y1={276} x2={250} y2={212} marker="af-arch-secondary" />
+      <Label x={16} y={258} tone="secondary">result</Label>
 
-      {/* 3b · GROQ → ORCHESTRATOR: response */}
-      <line x1="479" y1="150" x2="413" y2="150" stroke={B} strokeWidth="1.5" markerEnd="url(#arch-ab)" />
-      <text x="446" y="180" textAnchor="middle" fill={B} fontFamily={mono} fontSize="8">finish_reason: stop | tool_calls</text>
+      <Arrow x1={370} y1={196} x2={450} y2={272} marker="af-arch-primary" />
+      <Label x={388} y={236} tone="primary">JSON-RPC</Label>
 
-      {/* 4a · ORCHESTRATOR → benefits_lookup: call tool */}
-      <line x1="355" y1="167" x2="355" y2="237" stroke={G} strokeWidth="1.5" markerEnd="url(#arch-ag)" />
-      <text x="361" y="208" textAnchor="start" fill={G} fontFamily={mono} fontSize="8.5">call tool</text>
-
-      {/* 4b · benefits_lookup → ORCHESTRATOR: JSON result */}
-      <line x1="335" y1="237" x2="335" y2="167" stroke={B} strokeWidth="1.5" markerEnd="url(#arch-ab)" />
-      <text x="329" y="208" textAnchor="end" fill={B} fontFamily={mono} fontSize="8.5">JSON result</text>
-
-      {/* loop hint */}
-      <text x="500" y="208" textAnchor="middle" fill="rgba(45,106,79,0.45)" fontFamily={mono} fontSize="8">↻ loops until stop</text>
+      <Arrow x1={480} y1={272} x2={380} y2={200} marker="af-arch-secondary" />
+      <Label x={484} y={248} tone="secondary">result</Label>
     </svg>
   );
 }
 
+function Box({
+  x, y, w, h, tone, titleFont, label, detail,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  tone: "primary" | "secondary" | "warning";
+  titleFont: string;
+  label: string;
+  detail: string;
+}) {
+  const color = `var(--pkd-${tone})`;
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={w}
+        height={h}
+        rx={5}
+        fill={`var(--pkd-${tone}-bg)`}
+        stroke={color}
+        strokeWidth={tone === "primary" ? 2 : 1.5}
+      />
+      <text x={x + w / 2} y={y + 22} textAnchor="middle" fill={color} fontFamily={titleFont} fontSize={12} fontWeight={700}>
+        {label}
+      </text>
+      <text x={x + w / 2} y={y + 40} textAnchor="middle" fill="var(--pkd-foreground-muted)" fontFamily={titleFont} fontSize={10}>
+        {detail}
+      </text>
+    </g>
+  );
+}
+
+function Arrow({ x1, y1, x2, y2, marker }: { x1: number; y1: number; x2: number; y2: number; marker: string }) {
+  const tone = marker.endsWith("primary") ? "var(--pkd-primary)" : "var(--pkd-secondary)";
+  return <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={tone} strokeWidth={1.5} markerEnd={`url(#${marker})`} />;
+}
+
+function Label({ x, y, tone, children }: { x: number; y: number; tone: "primary" | "secondary"; children: string }) {
+  return (
+    <text x={x} y={y} fill={`var(--pkd-${tone})`} fontFamily="var(--pkd-font-mono)" fontSize={10}>
+      {children}
+    </text>
+  );
+}

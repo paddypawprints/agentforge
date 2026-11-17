@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { benefitsLookupTool } from "../services/tools";
 
-export function ToolDispatcher() {
+export function ToolDispatcher({ embedded = false }: { embedded?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -38,7 +38,7 @@ export function ToolDispatcher() {
   const B = 'var(--pkd-secondary)';
 
   return (
-    <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ padding: embedded ? 0 : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       {error && (
         <div className="pkd-alert" style={{ color: 'var(--pkd-destructive)', borderColor: 'var(--pkd-destructive)' }}>
